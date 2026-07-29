@@ -1,0 +1,40 @@
+{
+  "name": "pinkora-edukonekta",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Pinkora EduKonekta monorepo foundation",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:shared": "npm run build --workspace=@pinkora/shared",
+    "build:web": "npm run build --workspace=@pinkora/web",
+    "build:api": "npm run build --workspace=@pinkora/api",
+    "dev": "concurrently \"npm run dev --workspace=@pinkora/api\" \"npm run dev --workspace=@pinkora/web\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "lint": "eslint .",
+    "test": "npm run test --workspaces --if-present",
+    "test:api": "npm run test --workspace=@pinkora/api",
+    "test:e2e": "playwright test",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@next/eslint-plugin-next": "^15.5.22",
+    "eslint-config-next": "^15.5.22",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

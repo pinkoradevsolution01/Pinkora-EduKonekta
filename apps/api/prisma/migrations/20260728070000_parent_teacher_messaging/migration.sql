@@ -1,0 +1,13 @@
+CREATE TYPE "ConversationState" AS ENUM ('ACTIVE', 'ARCHIVED', 'ESCALATED');
+CREATE TABLE "conversations" ("id" UUID NOT NULL,"school_id" UUID NOT NULL,"student_id" UUID NOT NULL,"parent_user_id" UUID NOT NULL,"teacher_user_id" UUID NOT NULL,"state" "ConversationState" NOT NULL DEFAULT 'ACTIVE',"escalation_reason" TEXT,"escalated_by_user_id" UUID,"admin_accessed_by_user_id" UUID,"admin_accessed_at" TIMESTAMPTZ(3),"created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updated_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "conversations_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "messages" ("id" UUID NOT NULL,"school_id" UUID NOT NULL,"conversation_id" UUID NOT NULL,"author_user_id" UUID NOT NULL,"content" TEXT NOT NULL,"attachment_name" VARCHAR(255),"attachment_mime" VARCHAR(100),"attachment_size" INTEGER,"attachment_storage_key" VARCHAR(500),"read_at" TIMESTAMPTZ(3),"created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updated_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "messages_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "conversations_school_id_parent_user_id_updated_at_idx" ON "conversations"("school_id","parent_user_id","updated_at");
+CREATE INDEX "conversations_school_id_teacher_user_id_updated_at_idx" ON "conversations"("school_id","teacher_user_id","updated_at");
+CREATE INDEX "messages_school_id_conversation_id_created_at_idx" ON "messages"("school_id","conversation_id","created_at");
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "schools"("id") ON DELETE CASCADE;
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "student_profiles"("id") ON DELETE CASCADE;
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_parent_user_id_fkey" FOREIGN KEY ("parent_user_id") REFERENCES "users"("id") ON DELETE RESTRICT;
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_teacher_user_id_fkey" FOREIGN KEY ("teacher_user_id") REFERENCES "users"("id") ON DELETE RESTRICT;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "schools"("id") ON DELETE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_author_user_id_fkey" FOREIGN KEY ("author_user_id") REFERENCES "users"("id") ON DELETE RESTRICT;

@@ -1,0 +1,231 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light;
+  --brand-navy: #092d83;
+  --brand-blue: #1455c0;
+  --brand-red: #e31b23;
+  --brand-gold: #f4ae08;
+  --brand-ink: #10254f;
+  --brand-surface: #f5f8ff;
+  --brand-muted: #607198;
+  --brand-line: #dce5f7;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: 'Avenir Next', Avenir, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(circle at 12% 4%, rgb(20 85 192 / 10%), transparent 24rem),
+    radial-gradient(circle at 94% 14%, rgb(244 174 8 / 12%), transparent 19rem),
+    var(--brand-surface);
+  color: var(--brand-ink);
+}
+
+.brand-wordmark {
+  font-family: 'Avenir Next', Avenir, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1;
+}
+
+.brand-wordmark-name {
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.brand-wordmark-product {
+  margin-top: 0.22rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.brand-wordmark-tagline {
+  margin-top: 0.35rem;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.brand-wordmark-compact .brand-wordmark-name {
+  font-size: 0.92rem;
+}
+
+.brand-wordmark-compact .brand-wordmark-product {
+  margin-top: 0.1rem;
+  font-size: 0.55rem;
+}
+
+.brand-wordmark-compact .brand-wordmark-tagline {
+  display: none;
+}
+
+::selection {
+  background: #f8d36a;
+  color: var(--brand-navy);
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, #eef4ff 0%, #ffffff 48%, #fff6e0 100%);
+}
+
+.brand-gradient-dark {
+  background: linear-gradient(135deg, #061d5a 0%, #0b3b9e 62%, #c91624 100%);
+}
+
+.brand-button {
+  background: var(--brand-navy);
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.brand-button:hover {
+  background: var(--brand-blue);
+  box-shadow: 0 8px 18px rgb(9 45 131 / 18%);
+  transform: translateY(-1px);
+}
+
+button {
+  cursor: pointer;
+  transition: opacity 140ms ease, transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button.interaction-pending {
+  cursor: wait;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+button.interaction-pending::after {
+  content: '';
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-left: 0.45rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 650ms linear infinite;
+}
+
+.brand-focus:focus-visible {
+  outline: 3px solid rgb(244 174 8 / 55%);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 1.25rem;
+}
+
+.page-container {
+  margin: 0 auto;
+  max-width: 76rem;
+}
+
+.app-card {
+  border: 1px solid rgb(220 229 247 / 90%);
+  border-radius: 1.25rem;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 12px 32px rgb(16 37 79 / 6%);
+}
+
+.eyebrow {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-red);
+}
+
+.page-title {
+  color: var(--brand-navy);
+  font-size: clamp(1.875rem, 4vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.page-copy {
+  max-width: 42rem;
+  color: var(--brand-muted);
+  line-height: 1.65;
+}
+
+.metric-card {
+  border: 1px solid rgb(220 229 247 / 80%);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 80%);
+  padding: 1rem;
+  box-shadow: 0 8px 20px rgb(16 37 79 / 4%);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.32rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.fade-in {
+  animation: fade-in-up 420ms ease-out both;
+}
+
+.delay-1 {
+  animation-delay: 80ms;
+}
+
+.delay-2 {
+  animation-delay: 160ms;
+}
+
+.skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #edf2fb 25%, #f8faff 50%, #edf2fb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 640px) {
+  .app-shell {
+    padding: 2rem;
+  }
+}

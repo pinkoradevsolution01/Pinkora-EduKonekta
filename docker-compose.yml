@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edukonekta
+      POSTGRES_PASSWORD: edukonekta
+      POSTGRES_DB: edukonekta
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U edukonekta -d edukonekta']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://edukonekta:edukonekta@postgres:5432/edukonekta?schema=public
+      CORS_ORIGIN: http://localhost:3000
+      API_PREFIX: api
+      API_VERSION: v1
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '4000:4000'
+    volumes:
+      - .:/workspace
+      - workspace_node_modules:/workspace/node_modules
+    command: sh -c "cd apps/api && npx prisma generate && npm run dev:with-database"
+    healthcheck:
+      test: ['CMD', 'node', 'apps/api/healthcheck.mjs']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/workspace
+      - workspace_node_modules:/workspace/node_modules
+    command: sh -c "cd apps/web && npm run dev"
+    healthcheck:
+      test: ['CMD', 'node', 'apps/web/healthcheck.mjs']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  workspace_node_modules:
