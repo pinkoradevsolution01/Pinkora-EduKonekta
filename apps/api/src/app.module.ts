@@ -13,6 +13,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { SafetyModule } from './safety/safety.module';
+import { GuidanceModule } from './guidance/guidance.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { SafetyModule } from './safety/safety.module';
     EvaluationsModule,
     MessagingModule,
     SafetyModule,
+    GuidanceModule,
+    NotificationsModule,
     HealthModule,
   ],
 })

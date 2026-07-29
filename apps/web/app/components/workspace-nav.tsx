@@ -32,6 +32,7 @@ const links: Array<{ href: string; label: string; roles: Role[] }> = [
   { href: '/messages', label: 'Messages', roles: ['TEACHER', 'PARENT'] },
   { href: '/safety', label: 'Safety report', roles: ['STUDENT', 'TEACHER', 'PARENT', 'GUIDANCE', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'] },
   { href: '/safety/intake', label: 'Safeguarding intake', roles: ['GUIDANCE'] },
+  { href: '/guidance/cases', label: 'Guidance cases', roles: ['GUIDANCE'] },
   {
     href: '/dashboard/parent',
     label: 'Parent dashboard',
@@ -51,6 +52,7 @@ const links: Array<{ href: string; label: string; roles: Role[] }> = [
 
 export function WorkspaceNav() {
   const [roles, setRoles] = useState<Role[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => {
     fetch(`${api}/auth/me`, { credentials: 'include' })
@@ -63,11 +65,11 @@ export function WorkspaceNav() {
     window.location.assign('/auth');
   }
   return (
-    <nav className="mb-8 rounded-2xl border border-white/10 bg-[#071f61]/95 p-2.5 text-sm text-white shadow-xl shadow-blue-950/20 backdrop-blur">
-      <div className="flex flex-wrap items-center gap-2">
+    <nav className="workspace-nav mb-8 rounded-2xl border border-white/10 bg-[#071f61]/95 p-2.5 text-sm text-white shadow-xl shadow-blue-950/20 backdrop-blur">
+      <div className="workspace-nav-head flex flex-wrap items-center gap-2">
         <Link href="/workspace" className="mr-auto flex items-center gap-2 rounded-xl px-2 py-1.5">
           <Image src="/pinkora-logo.png" alt="" width={34} height={34} className="rounded-lg" />
-          <BrandWordmark light compact className="hidden sm:block" />
+          <BrandWordmark light compact className="workspace-brand-title" />
         </Link>
         <span className="hidden rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 lg:inline">
           {roles[0]?.replace('_', ' ') ?? 'School member'}
@@ -79,8 +81,20 @@ export function WorkspaceNav() {
         >
           Sign out
         </button>
+        <button
+          type="button"
+          className="workspace-menu-toggle brand-focus rounded-xl border border-white/20 px-3 py-2 font-semibold transition hover:bg-white/10 lg:hidden"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+          aria-controls="workspace-navigation-links"
+        >
+          {menuOpen ? 'Close' : 'Menu'}
+        </button>
       </div>
-      <div className="mt-2 flex gap-1 overflow-x-auto border-t border-white/10 pt-2">
+      <div
+        id="workspace-navigation-links"
+        className={`workspace-nav-links ${menuOpen ? 'workspace-nav-links-open' : ''} mt-2 flex gap-1 overflow-x-auto border-t border-white/10 pt-2`}
+      >
         {links
           .filter((link) => link.roles.some((role) => roles.includes(role)))
           .map((link) => {
@@ -90,6 +104,7 @@ export function WorkspaceNav() {
                 key={link.href}
                 href={link.href}
                 aria-current={active ? 'page' : undefined}
+                onClick={() => setMenuOpen(false)}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 font-medium transition ${
                   active
                     ? 'bg-white text-[#092d83] shadow-sm'

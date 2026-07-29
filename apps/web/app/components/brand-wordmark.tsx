@@ -10,8 +10,8 @@ export function BrandWordmark({
   const tagline = light ? 'text-white/65' : 'text-slate-500';
   return (
     <div className={`brand-wordmark ${compact ? 'brand-wordmark-compact' : ''} ${className}`}>
-      <div className={`brand-wordmark-name ${primary}`}>PINKORA</div>
-      <div className={`brand-wordmark-product ${secondary}`}>EduKonekta</div>
+      <div className={`brand-wordmark-name ${primary}`}>EduKonekta</div>
+      <div className={`brand-wordmark-product ${secondary}`}>School communication &amp; support</div>
       <div className={`brand-wordmark-tagline ${tagline}`}>Pinkora Nexus for Education</div>
     </div>
   );

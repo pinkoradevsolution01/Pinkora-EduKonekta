@@ -14,6 +14,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         {children}
+        <footer className="system-footer">
+          © 2026 EduKonekta. Powered by Pinkora Dev. All rights reserved.
+        </footer>
         <InteractionFeedback />
         <PwaRegister />
       </body>

@@ -92,6 +92,26 @@ enum SafetyReportStatus {
   FOLLOW_UP
   CLOSED
 }
+enum GuidanceCaseStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+enum GuidanceCasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+enum NotificationStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
 
 model School {
   id                    String                 @id @default(uuid()) @db.Uuid
@@ -126,6 +146,7 @@ model School {
   conversations         Conversation[]
   messages              Message[]
   safetyReports         SafetyReport[]
+  guidanceCases         GuidanceCase[]
   safeguardingAccesses  SafeguardingAccess[]
 
   @@index([isActive])
@@ -169,6 +190,8 @@ model User {
   submittedSafetyReports       SafetyReport[]               @relation("SafetyReporters")
   safetyReportUpdates          SafetyReportUpdate[]         @relation("SafetyUpdateAuthors")
   safeguardingAccesses         SafeguardingAccess[]
+  assignedGuidanceCases        GuidanceCaseAssignment[]
+  guidanceCaseNotes            GuidanceCaseNote[]
 
   @@index([status])
   @@map("users")
@@ -790,6 +813,7 @@ model SafetyReport {
   school                    School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   reporter                  User               @relation("SafetyReporters", fields: [reporterUserId], references: [id], onDelete: Restrict)
   updates                   SafetyReportUpdate[]
+  guidanceCases              GuidanceCase[]
 
   @@index([schoolId, status, createdAt])
   @@index([schoolId, reporterUserId, createdAt])
@@ -811,4 +835,98 @@ model SafetyReportUpdate {
 
   @@index([schoolId, reportId, createdAt])
   @@map("safety_report_updates")
+}
+
+model GuidanceCase {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @map("school_id") @db.Uuid
+  reportId String @map("report_id") @db.Uuid
+  priority GuidanceCasePriority @default(MEDIUM)
+  status GuidanceCaseStatus @default(OPEN)
+  actionPlanEncrypted String? @map("action_plan_encrypted") @db.Text
+  referralEncrypted String? @map("referral_encrypted") @db.Text
+  followUpAt DateTime? @map("follow_up_at") @db.Timestamptz(3)
+  closedAt DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  school School @relation(fields:[schoolId],references:[id],onDelete:Cascade)
+  report SafetyReport @relation(fields:[reportId],references:[id],onDelete:Restrict)
+  assignments GuidanceCaseAssignment[]
+  notes GuidanceCaseNote[]
+  @@unique([schoolId, reportId])
+  @@index([schoolId,status,priority])
+  @@map("guidance_cases")
+}
+model GuidanceCaseAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @map("school_id") @db.Uuid
+  caseId String @map("case_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  elevated Boolean @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  case GuidanceCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@unique([caseId,userId])
+  @@index([schoolId,userId])
+  @@map("guidance_case_assignments")
+}
+model GuidanceCaseNote {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @map("school_id") @db.Uuid
+  caseId String @map("case_id") @db.Uuid
+  authorUserId String @map("author_user_id") @db.Uuid
+  contentEncrypted String @map("content_encrypted") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  case GuidanceCase @relation(fields:[caseId],references:[id],onDelete:Cascade)
+  author User @relation(fields:[authorUserId],references:[id],onDelete:Restrict)
+  @@index([schoolId,caseId,createdAt])
+  @@map("guidance_case_notes")
+}
+
+model NotificationPreference {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @map("school_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  eventType String @map("event_type") @db.VarChar(120)
+  inAppEnabled Boolean @default(true) @map("in_app_enabled")
+  emailEnabled Boolean @default(true) @map("email_enabled")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  @@unique([schoolId,userId,eventType])
+  @@index([schoolId,userId])
+  @@map("notification_preferences")
+}
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @map("school_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  eventType String @map("event_type") @db.VarChar(120)
+  title String @db.VarChar(200)
+  body String @db.VarChar(1000)
+  link String? @db.VarChar(500)
+  idempotencyKey String @unique @map("idempotency_key") @db.VarChar(255)
+  readAt DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  @@index([schoolId,userId,createdAt])
+  @@map("notifications")
+}
+model NotificationJob {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @map("school_id") @db.Uuid
+  eventType String @map("event_type") @db.VarChar(120)
+  recipientUserId String @map("recipient_user_id") @db.Uuid
+  payload Json
+  idempotencyKey String @unique @map("idempotency_key") @db.VarChar(255)
+  status NotificationStatus @default(PENDING)
+  attempts Int @default(0)
+  availableAt DateTime @default(now()) @map("available_at") @db.Timestamptz(3)
+  lastError String? @map("last_error") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  @@index([status,availableAt])
+  @@index([schoolId,recipientUserId])
+  @@map("notification_jobs")
 }
