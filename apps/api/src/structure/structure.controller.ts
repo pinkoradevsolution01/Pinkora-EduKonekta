@@ -83,7 +83,9 @@ export class StructureController {
   @Get('bulk/enrollments/template')
   @Roles(RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
   @UseGuards(RolesGuard)
-  bulkTemplate() { return this.structure.bulkEnrollmentTemplate(); }
+  bulkTemplate() {
+    return this.structure.bulkEnrollmentTemplate();
+  }
   @Get('classes')
   @Roles(RoleCode.TEACHER, RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
   @UseGuards(RolesGuard)

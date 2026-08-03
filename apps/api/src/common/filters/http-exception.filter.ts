@@ -10,7 +10,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = context.getRequest<Request>();
     const requestId = response.locals?.requestId ?? request.header('x-request-id') ?? 'unknown';
     if (!(exception instanceof HttpException) && !(exception instanceof ZodError))
-      console.error({ requestId, errorType: exception instanceof Error ? exception.name : 'unknown' });
+      console.error({
+        requestId,
+        errorType: exception instanceof Error ? exception.name : 'unknown',
+      });
     const status =
       exception instanceof ZodError
         ? HttpStatus.BAD_REQUEST

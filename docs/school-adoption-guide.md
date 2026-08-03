@@ -4,7 +4,7 @@ This guide explains how Pinkora EduKonekta should be introduced to Philippine sc
 
 ## Release status
 
-Do not invite a school to enter real data until the production-readiness checklist is complete. At present, notification delivery, the complete administration reporting experience, and final security hardening require completion and validation.
+Do not invite a school to enter real data until the production-readiness checklist is complete. The technical pilot package is available; school-specific approval, support contacts, training, monitoring configuration, and a witnessed restore exercise remain mandatory before real data is entered. See [pilot-readiness.md](pilot-readiness.md).
 
 Demonstrations must use only the provided demonstration accounts and fictional records.
 

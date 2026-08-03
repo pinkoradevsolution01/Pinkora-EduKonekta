@@ -6,9 +6,17 @@ const evidence = z
   .object({
     name: z.string().trim().min(1).max(255),
     mime: z.enum(['application/pdf', 'image/jpeg', 'image/png']),
-    size: z.number().int().positive().max(5 * 1024 * 1024),
+    size: z
+      .number()
+      .int()
+      .positive()
+      .max(5 * 1024 * 1024),
     storageKey: z.string().trim().min(1).max(500),
-    contentBase64: z.string().min(1).max(7 * 1024 * 1024).optional(),
+    contentBase64: z
+      .string()
+      .min(1)
+      .max(7 * 1024 * 1024)
+      .optional(),
   })
   .optional();
 

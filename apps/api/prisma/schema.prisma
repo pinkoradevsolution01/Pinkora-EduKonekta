@@ -12,6 +12,19 @@ enum UserStatus {
   INACTIVE
 }
 
+enum SubscriptionPlan {
+  TRIAL
+  BASIC
+  STANDARD
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
 enum RoleCode {
   STUDENT
   TEACHER
@@ -118,6 +131,8 @@ model School {
   name                  String                 @db.VarChar(200)
   slug                  String                 @unique @db.VarChar(100)
   isActive              Boolean                @default(true) @map("is_active")
+  subscriptionPlan      SubscriptionPlan       @default(TRIAL) @map("subscription_plan")
+  subscriptionStatus    SubscriptionStatus     @default(ACTIVE) @map("subscription_status")
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
   memberships           SchoolMembership[]

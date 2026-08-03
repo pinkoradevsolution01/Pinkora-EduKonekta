@@ -7,8 +7,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
   imports: [AuthModule, NotificationsModule],
   controllers: [AttendanceController],
-  providers: [
-    AttendanceService,
-  ],
+  providers: [AttendanceService],
 })
 export class AttendanceModule {}

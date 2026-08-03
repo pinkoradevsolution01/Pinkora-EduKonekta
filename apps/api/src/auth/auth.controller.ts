@@ -63,7 +63,9 @@ export class AuthController {
   @Get('users')
   @Roles(RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
   @UseGuards(AuthGuard, RolesGuard, TenantGuard)
-  users(@Req() request: AuthenticatedRequest) { return this.auth.users(request.auth!); }
+  users(@Req() request: AuthenticatedRequest) {
+    return this.auth.users(request.auth!);
+  }
 
   @Post('email/request-verification')
   @UseGuards(AuthGuard)

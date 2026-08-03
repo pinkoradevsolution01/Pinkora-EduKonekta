@@ -30,7 +30,11 @@ const links: Array<{ href: string; label: string; roles: Role[] }> = [
     roles: ['STUDENT', 'TEACHER', 'PARENT', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'],
   },
   { href: '/messages', label: 'Messages', roles: ['TEACHER', 'PARENT'] },
-  { href: '/safety', label: 'Safety report', roles: ['STUDENT', 'TEACHER', 'PARENT', 'GUIDANCE', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'] },
+  {
+    href: '/safety',
+    label: 'Safety report',
+    roles: ['STUDENT', 'TEACHER', 'PARENT', 'GUIDANCE', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'],
+  },
   { href: '/safety/intake', label: 'Safeguarding intake', roles: ['GUIDANCE'] },
   { href: '/guidance/cases', label: 'Guidance cases', roles: ['GUIDANCE'] },
   {

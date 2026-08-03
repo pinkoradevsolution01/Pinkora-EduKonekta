@@ -6,8 +6,6 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [AuthModule, NotificationsModule],
   controllers: [CommunicationsController],
-  providers: [
-    CommunicationsService,
-  ],
+  providers: [CommunicationsService],
 })
 export class CommunicationsModule {}

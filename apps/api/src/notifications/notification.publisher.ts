@@ -6,5 +6,7 @@ import { NotificationWorkerService } from './notification-worker.service';
 @Injectable()
 export class QueueNotificationPublisher implements EventPublisher {
   constructor(private readonly notifications: NotificationWorkerService) {}
-  publish<T>(event: DomainEvent<T>) { return this.notifications.enqueueEvent(event); }
+  publish<T>(event: DomainEvent<T>) {
+    return this.notifications.enqueueEvent(event);
+  }
 }

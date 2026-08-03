@@ -93,7 +93,11 @@ body {
 
 button {
   cursor: pointer;
-  transition: opacity 140ms ease, transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
 }
 
 button:active:not(:disabled) {
@@ -266,7 +270,9 @@ button.interaction-pending::after {
 }
 
 @keyframes button-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (min-width: 640px) {

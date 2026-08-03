@@ -15,7 +15,12 @@ type Note = {
   author: { displayName: string };
 };
 type Auth = { roles: string[] };
-type ManageableStudent = { id: string; displayName: string; studentNumber: string | null; className: string | null };
+type ManageableStudent = {
+  id: string;
+  displayName: string;
+  studentNumber: string | null;
+  className: string | null;
+};
 
 export default function ProgressPage() {
   const [auth, setAuth] = useState<Auth>({ roles: [] });
@@ -38,10 +43,15 @@ export default function ProgressPage() {
       ]);
       setAuth(me);
       setNotes(Array.isArray(data) ? data : []);
-      if (Array.isArray(me?.roles) && me.roles.some((role: string) =>
-        ['TEACHER', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'].includes(role),
-      )) {
-        const response = await fetch(`${api}/evaluations/manageable-students`, { credentials: 'include' });
+      if (
+        Array.isArray(me?.roles) &&
+        me.roles.some((role: string) =>
+          ['TEACHER', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'].includes(role),
+        )
+      ) {
+        const response = await fetch(`${api}/evaluations/manageable-students`, {
+          credentials: 'include',
+        });
         const availableStudents = await response.json();
         if (response.ok && Array.isArray(availableStudents)) {
           setStudents(availableStudents);
@@ -130,7 +140,8 @@ export default function ProgressPage() {
                 {!students.length && <option value="">No assigned students available</option>}
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
-                    {student.displayName}{student.className ? ` — ${student.className}` : ''}
+                    {student.displayName}
+                    {student.className ? ` — ${student.className}` : ''}
                     {student.studentNumber ? ` (${student.studentNumber})` : ''}
                   </option>
                 ))}
@@ -172,9 +183,13 @@ export default function ProgressPage() {
             </label>
             <p className="md:col-span-2 text-sm leading-6 text-slate-500">
               Internal safeguarding notes must be marked internal-only. Only students assigned to
-              you are listed. Use factual, respectful language; do not make diagnoses or disciplinary outcomes.
+              you are listed. Use factual, respectful language; do not make diagnoses or
+              disciplinary outcomes.
             </p>
-            <button disabled={!studentId} className="brand-button brand-focus w-fit rounded-xl px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60">
+            <button
+              disabled={!studentId}
+              className="brand-button brand-focus w-fit rounded-xl px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
               Save audited note
             </button>
           </form>

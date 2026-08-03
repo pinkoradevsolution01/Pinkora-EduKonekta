@@ -34,5 +34,7 @@ export class InMemoryNotificationMetrics implements NotificationMetrics {
     const key = `${name}:${JSON.stringify(tags)}`;
     this.counters.set(key, (this.counters.get(key) ?? 0) + 1);
   }
-  gauge(name: string, value: number) { this.gauges.set(name, value); }
+  gauge(name: string, value: number) {
+    this.gauges.set(name, value);
+  }
 }

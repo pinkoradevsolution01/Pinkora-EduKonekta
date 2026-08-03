@@ -1,2 +1,51 @@
-import {Body,Controller,Get,Param,Post,Patch,Req,UseGuards} from '@nestjs/common';import {RoleCode} from '@prisma/client';import {AuthGuard,RolesGuard,TenantGuard} from '../auth/auth.guards';import {Roles} from '../auth/decorators';import {AuthenticatedRequest} from '../auth/auth.types';import {GuidanceService} from './guidance.service';import {assignCaseSchema,caseUpdateSchema,createCaseSchema,noteSchema} from './guidance.schemas';
-@Controller({path:'guidance/cases',version:'1'}) @UseGuards(AuthGuard,TenantGuard,RolesGuard) @Roles(RoleCode.GUIDANCE) export class GuidanceController{constructor(private s:GuidanceService){} @Post()create(@Req()r:AuthenticatedRequest,@Body()b:unknown){return this.s.create(r.auth!,createCaseSchema.parse(b))}@Get()list(@Req()r:AuthenticatedRequest){return this.s.list(r.auth!)}@Get(':id')detail(@Req()r:AuthenticatedRequest,@Param('id')id:string){return this.s.detail(r.auth!,id)}@Patch(':id')update(@Req()r:AuthenticatedRequest,@Param('id')id:string,@Body()b:unknown){return this.s.update(r.auth!,id,caseUpdateSchema.parse(b))}@Post(':id/assignments')assign(@Req()r:AuthenticatedRequest,@Param('id')id:string,@Body()b:unknown){return this.s.assign(r.auth!,id,assignCaseSchema.parse(b))}@Post(':id/notes')note(@Req()r:AuthenticatedRequest,@Param('id')id:string,@Body()b:unknown){return this.s.note(r.auth!,id,noteSchema.parse(b).content)}@Get(':id/export')export(@Req()r:AuthenticatedRequest,@Param('id')id:string){return this.s.export(r.auth!,id)}}
+import { Body, Controller, Get, Param, Post, Patch, Req, UseGuards } from '@nestjs/common';
+import { RoleCode } from '@prisma/client';
+import { AuthGuard, RolesGuard, TenantGuard } from '../auth/auth.guards';
+import { Roles } from '../auth/decorators';
+import { AuthenticatedRequest } from '../auth/auth.types';
+import { GuidanceService } from './guidance.service';
+import {
+  assignCaseSchema,
+  caseUpdateSchema,
+  createCaseSchema,
+  noteSchema,
+} from './guidance.schemas';
+@Controller({ path: 'guidance/cases', version: '1' })
+@UseGuards(AuthGuard, TenantGuard, RolesGuard)
+@Roles(RoleCode.GUIDANCE)
+export class GuidanceController {
+  constructor(private s: GuidanceService) {}
+  @Post() create(@Req() r: AuthenticatedRequest, @Body() b: unknown) {
+    return this.s.create(r.auth!, createCaseSchema.parse(b));
+  }
+  @Get() list(@Req() r: AuthenticatedRequest) {
+    return this.s.list(r.auth!);
+  }
+  @Get(':id') detail(@Req() r: AuthenticatedRequest, @Param('id') id: string) {
+    return this.s.detail(r.auth!, id);
+  }
+  @Patch(':id') update(
+    @Req() r: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() b: unknown,
+  ) {
+    return this.s.update(r.auth!, id, caseUpdateSchema.parse(b));
+  }
+  @Post(':id/assignments') assign(
+    @Req() r: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() b: unknown,
+  ) {
+    return this.s.assign(r.auth!, id, assignCaseSchema.parse(b));
+  }
+  @Post(':id/notes') note(
+    @Req() r: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() b: unknown,
+  ) {
+    return this.s.note(r.auth!, id, noteSchema.parse(b).content);
+  }
+  @Get(':id/export') export(@Req() r: AuthenticatedRequest, @Param('id') id: string) {
+    return this.s.export(r.auth!, id);
+  }
+}

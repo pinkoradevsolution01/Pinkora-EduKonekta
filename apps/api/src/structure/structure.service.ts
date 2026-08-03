@@ -294,7 +294,11 @@ export class StructureService {
   bulkEnrollmentTemplate() {
     return {
       columns: ['schoolYearId', 'classId', 'studentProfileId'],
-      example: { schoolYearId: 'school-year-uuid', classId: 'class-uuid', studentProfileId: 'student-profile-uuid' },
+      example: {
+        schoolYearId: 'school-year-uuid',
+        classId: 'class-uuid',
+        studentProfileId: 'student-profile-uuid',
+      },
       maximumRows: 1000,
     };
   }

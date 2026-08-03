@@ -6,20 +6,20 @@ The project is in the **MVP completion and pre-production phase**. It is suitabl
 
 ## Technology stack
 
-| Area | Technology |
-|---|---|
-| Web application | Next.js 16.3 canary, React 19, TypeScript |
-| Styling | Tailwind CSS 4 and responsive CSS |
-| Backend API | Node.js, NestJS, TypeScript |
-| Database | PostgreSQL 16 |
-| Data access and migrations | Prisma ORM |
-| Local platform | Docker and Docker Compose |
-| Frontend development bundler | Next.js Turbopack |
-| Testing | Jest, Playwright foundation |
-| Code quality | ESLint, Prettier, TypeScript type checking |
-| CI foundation | GitHub Actions |
-| Authentication | Secure cookie sessions; invitation-only local authentication; managed-auth mapping prepared for Google Sign-In |
-| Email direction | Resend planned, with a verified custom sending domain required before production sending |
+| Area                         | Technology                                                                                                     |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Web application              | Next.js 16.3 canary, React 19, TypeScript                                                                      |
+| Styling                      | Tailwind CSS 4 and responsive CSS                                                                              |
+| Backend API                  | Node.js, NestJS, TypeScript                                                                                    |
+| Database                     | PostgreSQL 16                                                                                                  |
+| Data access and migrations   | Prisma ORM                                                                                                     |
+| Local platform               | Docker and Docker Compose                                                                                      |
+| Frontend development bundler | Next.js Turbopack                                                                                              |
+| Testing                      | Jest, Playwright foundation                                                                                    |
+| Code quality                 | ESLint, Prettier, TypeScript type checking                                                                     |
+| CI foundation                | GitHub Actions                                                                                                 |
+| Authentication               | Secure cookie sessions; invitation-only local authentication; managed-auth mapping prepared for Google Sign-In |
+| Email direction              | Resend planned, with a verified custom sending domain required before production sending                       |
 
 ## Completed or substantially implemented
 

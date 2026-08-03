@@ -11,7 +11,9 @@ export function BrandWordmark({
   return (
     <div className={`brand-wordmark ${compact ? 'brand-wordmark-compact' : ''} ${className}`}>
       <div className={`brand-wordmark-name ${primary}`}>EduKonekta</div>
-      <div className={`brand-wordmark-product ${secondary}`}>School communication &amp; support</div>
+      <div className={`brand-wordmark-product ${secondary}`}>
+        School communication &amp; support
+      </div>
       <div className={`brand-wordmark-tagline ${tagline}`}>JVerse for Education</div>
     </div>
   );
