@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { StructuredLogger } from './common/logging/logger';
+import { securityMiddleware } from './common/security/http-security';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -15,6 +16,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(config.getOrThrow<string>('API_PREFIX'));
   app.enableVersioning({ type: VersioningType.URI });
   app.enableCors({ origin: config.getOrThrow<string>('CORS_ORIGIN'), credentials: true });
+  app.use(securityMiddleware(config.getOrThrow<string>('CORS_ORIGIN')));
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const port = config.getOrThrow<number>('PORT');

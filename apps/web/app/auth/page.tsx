@@ -55,7 +55,7 @@ export default function AuthPage() {
         <div className="brand-gradient-dark hidden p-10 lg:block">
           <Image
             src="/pinkora-logo.png"
-            alt="Pinkora EduKonekta logo"
+            alt="JVerse EduKonekta logo"
             width={1024}
             height={1024}
             priority

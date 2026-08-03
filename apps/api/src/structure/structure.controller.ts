@@ -80,6 +80,10 @@ export class StructureController {
   validateBulk(@Req() req: AuthenticatedRequest, @Body() body: unknown) {
     return this.structure.validateBulkEnrollments(req.auth!, bulkEnrollmentSchema.parse(body).rows);
   }
+  @Get('bulk/enrollments/template')
+  @Roles(RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
+  @UseGuards(RolesGuard)
+  bulkTemplate() { return this.structure.bulkEnrollmentTemplate(); }
   @Get('classes')
   @Roles(RoleCode.TEACHER, RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
   @UseGuards(RolesGuard)

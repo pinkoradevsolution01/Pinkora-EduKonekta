@@ -15,6 +15,7 @@ import { MessagingModule } from './messaging/messaging.module';
 import { SafetyModule } from './safety/safety.module';
 import { GuidanceModule } from './guidance/guidance.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SchoolsModule } from './schools/schools.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     SafetyModule,
     GuidanceModule,
     NotificationsModule,
+    SchoolsModule,
     HealthModule,
   ],
 })

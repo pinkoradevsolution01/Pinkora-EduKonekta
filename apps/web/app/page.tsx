@@ -30,7 +30,7 @@ export default function HomePage() {
           <div className="rounded-3xl bg-[#f5f8ff] p-4 ring-1 ring-[#dbe6ff]">
             <Image
               src="/pinkora-logo.png"
-              alt="Pinkora EduKonekta logo"
+              alt="JVerse EduKonekta logo"
               width={1024}
               height={1024}
               priority

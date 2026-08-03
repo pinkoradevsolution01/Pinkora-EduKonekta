@@ -33,7 +33,7 @@ export default function StructureAdminPage() {
         <WorkspaceNav />
         <header>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#e31b23]">
-            Pinkora EduKonekta
+            JVerse EduKonekta
           </p>
           <h1 className="mt-2 text-3xl font-bold text-[#092d83]">School structure</h1>
           <p className="mt-2 max-w-2xl text-slate-600">

@@ -291,6 +291,14 @@ export class StructureService {
     return { valid: errors.length === 0, errors, rows: rows.length };
   }
 
+  bulkEnrollmentTemplate() {
+    return {
+      columns: ['schoolYearId', 'classId', 'studentProfileId'],
+      example: { schoolYearId: 'school-year-uuid', classId: 'class-uuid', studentProfileId: 'student-profile-uuid' },
+      maximumRows: 1000,
+    };
+  }
+
   private rethrowConflict(error: unknown): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
       throw new ConflictException('Duplicate record');

@@ -24,7 +24,7 @@ services:
       NODE_ENV: development
       PORT: 4000
       DATABASE_URL: postgresql://edukonekta:edukonekta@postgres:5432/edukonekta?schema=public
-      CORS_ORIGIN: http://localhost:3000
+      CORS_ORIGIN: http://localhost:3100
       API_PREFIX: api
       API_VERSION: v1
       LOG_LEVEL: info
@@ -54,7 +54,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - '3000:3000'
+      - '3100:3000'
     volumes:
       - .:/workspace
       - workspace_node_modules:/workspace/node_modules

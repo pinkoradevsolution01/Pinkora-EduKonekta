@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Pinkora EduKonekta',
+    name: 'JVerse EduKonekta',
     short_name: 'EduKonekta',
     description: 'School communication and student-support platform',
     start_url: '/',

@@ -11,3 +11,9 @@ Email verification and password recovery use one-time, expiring hashed tokens. R
 Login and recovery attempts are limited to five per identity per fifteen minutes per API process. Production deployments should replace this in-memory limiter with a shared Redis-backed limiter. Authentication successes, failures, logout, invitation redemption, recovery, password reset, and account status changes are written to `AuditLog`.
 
 Roles are read from server-side memberships. Client-provided roles, school IDs, or status values are never trusted for authorization.
+
+## Operational hardening
+
+The API assigns an opaque request ID to every response and emits it in error responses. Error logs include the error class and request ID, not request bodies, tokens, encrypted report contents, or exception objects. API and web responses use anti-framing, MIME-sniffing, referrer, permissions, and content-security headers. Unsafe browser requests with an untrusted `Origin` are rejected before reaching controllers.
+
+`/api/v1/health` is the uptime probe. It checks database connectivity without returning configuration, tenant data, or credentials. Review school-scoped audit activity from the administrator report at least monthly, with special attention to authentication, guidance, and safeguarding access events. See [backup-restore-test.md](backup-restore-test.md) for the required restoration exercise.

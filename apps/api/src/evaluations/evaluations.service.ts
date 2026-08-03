@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EvaluationVisibility, Prisma, RoleCode } from '@prisma/client';
 import { AuthContext } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { createEvent, EVENT_PUBLISHER, EventPublisher } from '../communications/notification-events';
 import {
   EvaluationCreateInput,
   EvaluationQuery,
@@ -10,7 +11,7 @@ import {
 
 @Injectable()
 export class EvaluationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, @Inject(EVENT_PUBLISHER) private readonly publisher: EventPublisher) {}
 
   private school(actor: AuthContext) {
     if (!actor.schoolId) throw new ForbiddenException('A school tenant is required');
@@ -140,6 +141,7 @@ export class EvaluationsService {
       visibility: updated.visibility,
       reason: input.reason ?? null,
     });
+    await this.publisher.publish(createEvent('evaluation.updated', id, updated.schoolId, {}));
     return updated;
   }
 

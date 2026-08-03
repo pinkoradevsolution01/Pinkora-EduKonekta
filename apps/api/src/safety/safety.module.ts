@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { EVENT_PUBLISHER, InMemoryNotificationPublisher } from '../communications/notification-events';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { SafetyController } from './safety.controller';
 import { SafetyService } from './safety.service';
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, NotificationsModule],
   controllers: [SafetyController],
-  providers: [SafetyService, InMemoryNotificationPublisher, { provide: EVENT_PUBLISHER, useExisting: InMemoryNotificationPublisher }],
+  providers: [SafetyService],
 })
 export class SafetyModule {}

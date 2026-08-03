@@ -303,4 +303,14 @@ export class AuthService {
       actor.schoolId ?? undefined,
     );
   }
+
+  async users(actor: AuthContext) {
+    if (!actor.schoolId || !actor.roles.some((role) => role === RoleCode.SCHOOL_ADMIN || role === RoleCode.PLATFORM_ADMIN))
+      throw new ForbiddenException('School administration access required');
+    return this.prisma.schoolMembership.findMany({
+      where: { schoolId: actor.schoolId },
+      select: { userId: true, isActive: true, joinedAt: true, user: { select: { displayName: true, email: true, status: true, emailVerifiedAt: true } }, role: { select: { code: true, name: true } } },
+      orderBy: { joinedAt: 'desc' }, take: 500,
+    });
+  }
 }

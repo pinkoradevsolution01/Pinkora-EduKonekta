@@ -1,6 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { randomUUID } from 'node:crypto';
 import { ZodError } from 'zod';
 
 @Catch()
@@ -9,9 +8,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
-    const requestId = request.header('x-request-id') ?? randomUUID();
+    const requestId = response.locals?.requestId ?? request.header('x-request-id') ?? 'unknown';
     if (!(exception instanceof HttpException) && !(exception instanceof ZodError))
-      console.error({ requestId, exception });
+      console.error({ requestId, errorType: exception instanceof Error ? exception.name : 'unknown' });
     const status =
       exception instanceof ZodError
         ? HttpStatus.BAD_REQUEST
