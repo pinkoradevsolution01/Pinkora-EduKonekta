@@ -52,6 +52,11 @@ const links: Array<{ href: string; label: string; roles: Role[] }> = [
     label: 'School structure',
     roles: ['SCHOOL_ADMIN', 'PLATFORM_ADMIN'],
   },
+  {
+    href: '/dashboard/admin',
+    label: 'Admin dashboard',
+    roles: ['SCHOOL_ADMIN', 'PLATFORM_ADMIN'],
+  },
 ];
 
 export function WorkspaceNav() {
@@ -59,13 +64,30 @@ export function WorkspaceNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => {
+    const cached = window.sessionStorage.getItem('pinkora.navigation.roles');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) setRoles(parsed as Role[]);
+      } catch {
+        window.sessionStorage.removeItem('pinkora.navigation.roles');
+      }
+    }
     fetch(`${api}/auth/me`, { credentials: 'include' })
       .then((response) => (response.ok ? response.json() : null))
-      .then((data) => setRoles(data?.roles ?? []))
-      .catch(() => setRoles([]));
+      .then((data) => {
+        const nextRoles = data?.roles ?? [];
+        setRoles(nextRoles);
+        window.sessionStorage.setItem('pinkora.navigation.roles', JSON.stringify(nextRoles));
+      })
+      .catch(() => {
+        setRoles([]);
+        window.sessionStorage.removeItem('pinkora.navigation.roles');
+      });
   }, []);
   async function signOut() {
     await fetch(`${api}/auth/logout`, { method: 'POST', credentials: 'include' });
+    window.sessionStorage.removeItem('pinkora.navigation.roles');
     window.location.assign('/auth');
   }
   return (

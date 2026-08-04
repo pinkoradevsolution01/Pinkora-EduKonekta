@@ -4,7 +4,11 @@ const attachment = z.object({
   name: z.string().min(1).max(255),
   mime: z.string().max(100),
   size: z.number().int().positive(),
-  storageKey: z.string().min(1).max(500),
+  data: z
+    .string()
+    .trim()
+    .min(4)
+    .max(14 * 1024 * 1024),
 });
 export const createConversationSchema = z.object({
   studentId: id,

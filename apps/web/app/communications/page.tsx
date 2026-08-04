@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { WorkspaceNav } from '../components/workspace-nav';
 
 const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
@@ -20,14 +20,20 @@ type CalendarEvent = {
   endsAt: string;
   description: string | null;
 };
+type Auth = { roles: string[] };
+type ClassOption = { id: string; name: string };
 
 export default function CommunicationsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [auth, setAuth] = useState<Auth>({ roles: [] });
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [message, setMessage] = useState('');
   useEffect(() => {
     Promise.all([
+      fetch(`${api}/auth/me`, { credentials: 'include' }).then((response) => response.json()),
       fetch(`${api}/communications/announcements`, { credentials: 'include' }).then((response) =>
         response.json(),
       ),
@@ -35,9 +41,22 @@ export default function CommunicationsPage() {
         response.json(),
       ),
     ])
-      .then(([nextAnnouncements, nextEvents]) => {
+      .then(([me, nextAnnouncements, nextEvents]) => {
+        setAuth(me);
         setAnnouncements(Array.isArray(nextAnnouncements) ? nextAnnouncements : []);
         setEvents(Array.isArray(nextEvents) ? nextEvents : []);
+        if (me.roles?.includes('TEACHER'))
+          void fetch(`${api}/structure/classes`, { credentials: 'include' })
+            .then((response) => response.json())
+            .then((items) => setClasses(Array.isArray(items) ? items : []));
+        else if (
+          me.roles?.some((role: string) => ['SCHOOL_ADMIN', 'PLATFORM_ADMIN'].includes(role))
+        )
+          void fetch(`${api}/structure/administration-overview`, { credentials: 'include' })
+            .then((response) => response.json())
+            .then((overview) =>
+              setClasses(Array.isArray(overview?.classes) ? overview.classes : []),
+            );
       })
       .catch(() => setError('Sign in to view school communications.'))
       .finally(() => setLoading(false));
@@ -63,6 +82,78 @@ export default function CommunicationsPage() {
       ),
     );
   }
+  const canPublish = auth.roles.some((role) =>
+    ['TEACHER', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'].includes(role),
+  );
+  async function createAnnouncement(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const audience = String(form.get('audience'));
+    try {
+      const item = await fetch(`${api}/communications/announcements`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: form.get('title'),
+          bodyHtml: form.get('bodyHtml'),
+          audiences: [audience],
+          classIds: audience === 'CLASS' ? [form.get('classId')] : [],
+          publishAt: form.get('publishAt') || undefined,
+          expiresAt: form.get('expiresAt') || undefined,
+        }),
+      }).then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error?.message);
+        return data;
+      });
+      const publishResponse = await fetch(
+        `${api}/communications/announcements/${item.id}/publish`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        },
+      );
+      if (!publishResponse.ok) throw new Error((await publishResponse.json())?.error?.message);
+      setMessage(
+        'Announcement saved and published or scheduled for its selected publication time.',
+      );
+      event.currentTarget.reset();
+      const refreshed = await fetch(`${api}/communications/announcements`, {
+        credentials: 'include',
+      });
+      if (refreshed.ok) setAnnouncements(await refreshed.json());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Announcement could not be saved.');
+    }
+  }
+  async function createEvent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch(`${api}/communications/calendar/events`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          classId: form.get('classId') || undefined,
+          title: form.get('title'),
+          description: form.get('description') || undefined,
+          startsAt: form.get('startsAt'),
+          endsAt: form.get('endsAt'),
+        }),
+      });
+      if (!response.ok) throw new Error((await response.json())?.error?.message);
+      setMessage('Calendar event saved and authorized recipients will be notified.');
+      event.currentTarget.reset();
+      const refreshed = await fetch(`${api}/communications/calendar/events`, {
+        credentials: 'include',
+      });
+      if (refreshed.ok) setEvents(await refreshed.json());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Calendar event could not be saved.');
+    }
+  }
   return (
     <main className="app-shell text-slate-900">
       <div className="page-container">
@@ -85,6 +176,120 @@ export default function CommunicationsPage() {
           </div>
         </header>
         {error && <p className="mt-6 rounded-xl bg-red-50 p-4 text-red-700">{error}</p>}
+        {message && <p className="mt-6 rounded-xl bg-emerald-50 p-4 text-emerald-700">{message}</p>}
+        {canPublish && (
+          <section className="mt-7 grid gap-5 lg:grid-cols-2">
+            <form onSubmit={createAnnouncement} className="app-card p-6">
+              <h2 className="text-xl font-bold text-[#092d83]">Publish an announcement</h2>
+              <div className="mt-4 grid gap-3">
+                <input
+                  name="title"
+                  required
+                  maxLength={200}
+                  placeholder="Announcement title"
+                  className="brand-focus rounded-xl border p-3"
+                />
+                <textarea
+                  name="bodyHtml"
+                  required
+                  maxLength={100000}
+                  placeholder="Write a clear school update…"
+                  className="brand-focus min-h-28 rounded-xl border p-3"
+                />
+                <select
+                  name="audience"
+                  defaultValue={auth.roles.includes('TEACHER') ? 'CLASS' : 'SCHOOL'}
+                  className="brand-focus rounded-xl border p-3"
+                >
+                  <option value="SCHOOL" disabled={auth.roles.includes('TEACHER')}>
+                    Whole school
+                  </option>
+                  <option value="CLASS">Selected class</option>
+                </select>
+                <select
+                  name="classId"
+                  required={auth.roles.includes('TEACHER')}
+                  className="brand-focus rounded-xl border p-3"
+                >
+                  <option value="">
+                    {classes.length ? 'Select a class' : 'Class target not selected'}
+                  </option>
+                  {classes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+                <label className="text-sm">
+                  Publish later (optional)
+                  <input
+                    name="publishAt"
+                    type="datetime-local"
+                    className="mt-1 block w-full rounded-xl border p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  Expires (optional)
+                  <input
+                    name="expiresAt"
+                    type="datetime-local"
+                    className="mt-1 block w-full rounded-xl border p-3"
+                  />
+                </label>
+                <button className="brand-button brand-focus rounded-xl p-3 font-bold text-white">
+                  Publish or schedule
+                </button>
+              </div>
+            </form>
+            <form onSubmit={createEvent} className="app-card p-6">
+              <h2 className="text-xl font-bold text-[#092d83]">Create calendar event</h2>
+              <div className="mt-4 grid gap-3">
+                <input
+                  name="title"
+                  required
+                  maxLength={200}
+                  placeholder="Event title"
+                  className="brand-focus rounded-xl border p-3"
+                />
+                <textarea
+                  name="description"
+                  maxLength={20000}
+                  placeholder="Optional event details"
+                  className="brand-focus min-h-24 rounded-xl border p-3"
+                />
+                <select name="classId" className="brand-focus rounded-xl border p-3">
+                  <option value="">Whole school</option>
+                  {classes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+                <label className="text-sm">
+                  Starts
+                  <input
+                    name="startsAt"
+                    type="datetime-local"
+                    required
+                    className="mt-1 block w-full rounded-xl border p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  Ends
+                  <input
+                    name="endsAt"
+                    type="datetime-local"
+                    required
+                    className="mt-1 block w-full rounded-xl border p-3"
+                  />
+                </label>
+                <button className="brand-button brand-focus rounded-xl p-3 font-bold text-white">
+                  Create event
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.55fr_0.8fr]">
           <section>
             <div className="mb-4 flex items-center justify-between">

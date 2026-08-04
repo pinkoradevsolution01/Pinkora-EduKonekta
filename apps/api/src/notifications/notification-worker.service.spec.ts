@@ -1,5 +1,9 @@
 import { NotificationWorkerService } from './notification-worker.service';
-import { InMemoryNotificationMetrics, NoopEmailAdapter } from './notification.types';
+import {
+  InMemoryNotificationMetrics,
+  NoopEmailAdapter,
+  ResendEmailAdapter,
+} from './notification.types';
 import { safeTemplate } from './notification.templates';
 
 describe('notification worker', () => {
@@ -149,5 +153,86 @@ describe('notification worker', () => {
       maxAttempts: 3,
     });
     expect(count).toHaveBeenCalledTimes(3);
+  });
+
+  it('enqueues each due-soon assignment reminder once per recipient and day', async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const worker = new NotificationWorkerService(
+      {
+        assignment: {
+          findMany: jest.fn().mockResolvedValue([{ id: 'assignment-1', schoolId: 'school-1' }]),
+          findFirst: jest.fn().mockResolvedValue({
+            class: {
+              enrollments: [
+                {
+                  student: {
+                    userId: 'student-1',
+                    parentLinks: [{ parent: { userId: 'parent-1' } }],
+                  },
+                },
+              ],
+            },
+          }),
+        },
+        notificationJob: { upsert },
+      } as any,
+      new NoopEmailAdapter(),
+      new InMemoryNotificationMetrics(),
+    );
+    const result = await worker.enqueueAssignmentDueReminders(new Date('2030-01-01T12:00:00Z'));
+    expect(result).toEqual({ queued: 2 });
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ eventType: 'assignment.due_soon' }),
+      }),
+    );
+  });
+
+  it('publishes a due scheduled announcement once and queues its normal notification', async () => {
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const enqueue = jest
+      .spyOn(NotificationWorkerService.prototype, 'enqueueEvent')
+      .mockResolvedValue();
+    const worker = new NotificationWorkerService(
+      {
+        announcement: {
+          findMany: jest.fn().mockResolvedValue([{ id: 'announcement-1', schoolId: 'school-1' }]),
+          updateMany,
+        },
+        auditLog: { create: jest.fn() },
+      } as any,
+      new NoopEmailAdapter(),
+      new InMemoryNotificationMetrics(),
+    );
+    await expect(worker.publishScheduledAnnouncements(new Date())).resolves.toEqual({
+      published: 1,
+    });
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'announcement.published', aggregateId: 'announcement-1' }),
+    );
+    enqueue.mockRestore();
+  });
+
+  it('sends provider email with an idempotency key and never exposes a recipient list', async () => {
+    const fetcher = jest.fn().mockResolvedValue({ ok: true, status: 202 });
+    const adapter = new ResendEmailAdapter('test-key', 'Pinkora <updates@example.test>', fetcher);
+    await adapter.send({
+      to: 'parent@example.test',
+      subject: 'New assignment',
+      text: 'A new assignment is available.',
+      idempotencyKey: 'notification-1',
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://api.resend.com/emails',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'idempotency-key': 'notification-1' }),
+        body: JSON.stringify({
+          from: 'Pinkora <updates@example.test>',
+          to: ['parent@example.test'],
+          subject: 'New assignment',
+          text: 'A new assignment is available.',
+        }),
+      }),
+    );
   });
 });

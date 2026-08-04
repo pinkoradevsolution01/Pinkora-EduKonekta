@@ -19,11 +19,12 @@ The backend must have a least-privileged database account, outbound access only 
 
 ## Frontend environment
 
-| Variable              | Staging/production value                                              |
-| --------------------- | --------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL` | Exact HTTPS API URL, ending in `/api/v1` for the matching environment |
+| Variable              | Staging/production value                                                                                                   |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL` | `/api/v1` when the frontend proxies same-origin requests; otherwise the exact HTTPS API URL ending in `/api/v1`            |
+| `API_INTERNAL_URL`    | Private API URL used by the Next.js rewrite, for example `http://api:4000/api/v1` in Docker or the provider's internal URL |
 
-Because `NEXT_PUBLIC_*` values are embedded in the browser build, it must contain no secret. Build staging and production frontend artifacts separately.
+Because `NEXT_PUBLIC_*` values are embedded in the browser build, it must contain no secret. The same-origin `/api/v1` setup avoids CORS preflights for browser mutations and keeps session traffic on the web origin. Build staging and production frontend artifacts separately.
 
 ## Required provider configuration before release
 
@@ -35,7 +36,7 @@ Because `NEXT_PUBLIC_*` values are embedded in the browser build, it must contai
 
 ## Email and notification scope
 
-In-app notifications may be enabled after queue checks pass. The repository intentionally uses a `NoopEmailAdapter`; email notifications, verification, and password-reset delivery require an approved provider integration, sending domain, SPF/DKIM/DMARC, credentials in the secret manager, retry/error alerts, and privacy-template verification. Do not set placeholder SMTP values or claim email delivery is live before that work is complete.
+In-app notifications may be enabled after queue checks pass. Email notifications use the Resend HTTPS adapter when both `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are configured; otherwise local development deliberately uses a `NoopEmailAdapter`. Configure the sending domain, SPF/DKIM/DMARC, credentials in the secret manager, retry/error alerts, and privacy-template verification before enabling it. Do not set placeholder SMTP values or claim email delivery is live before those deployment checks are complete.
 
 ## Rotation and change control
 

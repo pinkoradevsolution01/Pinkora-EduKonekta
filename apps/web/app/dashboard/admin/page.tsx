@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { WorkspaceNav } from '../../components/workspace-nav';
+import { AdminDashboardManager } from './admin-dashboard-manager';
 const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 type Overview = {
   activeUsers: number;
@@ -12,6 +13,24 @@ type Overview = {
   openGuidanceCases: number;
 };
 export default function AdminDashboardPage() {
+  return (
+    <main className="app-shell brand-gradient text-slate-900">
+      <div className="page-container">
+        <WorkspaceNav />
+        <header>
+          <p className="eyebrow">School administration</p>
+          <h1 className="page-title mt-2">Administration dashboard</h1>
+          <p className="page-copy mt-3">
+            Tenant-scoped, de-identified operational metrics, reports, and pilot settings.
+          </p>
+        </header>
+        <AdminDashboardManager />
+      </div>
+    </main>
+  );
+}
+
+function LegacyAdminDashboardPage() {
   const [schoolId, setSchoolId] = useState('');
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState('');
@@ -130,3 +149,5 @@ function MetricTable({ title, rows }: { title: string; rows: Array<(string | num
     </section>
   );
 }
+
+void LegacyAdminDashboardPage;

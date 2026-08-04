@@ -3,12 +3,30 @@ import { RoleCode } from '@prisma/client';
 import { MessagingService } from './messaging.service';
 const parent = { userId: 'parent-1', schoolId: 'school-a', roles: [RoleCode.PARENT] } as any;
 describe('MessagingService controls', () => {
+  it('lists only teachers reached through approved links in the current school', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const service = new MessagingService(
+      { parentStudentLink: { findMany } } as any,
+      { publish: jest.fn() } as any,
+      { save: jest.fn(), read: jest.fn(), remove: jest.fn() } as any,
+    );
+    await service.contacts(parent);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ schoolId: 'school-a', status: 'APPROVED' }),
+      }),
+    );
+  });
   it('rejects a conversation when the parent and teacher are not authorized through a student', async () => {
     const db = {
       parentStudentLink: { findFirst: jest.fn().mockResolvedValue(null) },
       teacherAssignment: { findFirst: jest.fn().mockResolvedValue(null) },
     };
-    const service = new MessagingService(db as any, { publish: jest.fn() } as any);
+    const service = new MessagingService(
+      db as any,
+      { publish: jest.fn() } as any,
+      { save: jest.fn(), read: jest.fn(), remove: jest.fn() } as any,
+    );
     await expect(
       service.create(parent, {
         studentId: 'student-a',
@@ -35,7 +53,11 @@ describe('MessagingService controls', () => {
       },
       auditLog: { create: jest.fn().mockResolvedValue({}) },
     };
-    const service = new MessagingService(db as any, { publish: jest.fn() } as any);
+    const service = new MessagingService(
+      db as any,
+      { publish: jest.fn() } as any,
+      { save: jest.fn(), read: jest.fn(), remove: jest.fn() } as any,
+    );
     const output = await service.send(parent, 'conversation-a', { content: 'private detail' });
     expect(output.notificationPreview).toBe('New secure message');
     expect(output.notificationPreview).not.toContain('private detail');

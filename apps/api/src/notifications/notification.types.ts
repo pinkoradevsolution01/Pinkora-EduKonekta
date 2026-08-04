@@ -27,6 +27,36 @@ export class NoopEmailAdapter implements EmailAdapter {
   }
 }
 
+type FetchLike = typeof fetch;
+
+/** Resend's HTTPS API adapter. It receives only already-sanitized notification text. */
+export class ResendEmailAdapter implements EmailAdapter {
+  constructor(
+    private readonly apiKey: string,
+    private readonly from: string,
+    private readonly fetcher: FetchLike = fetch,
+  ) {}
+
+  async send(input: { to: string; subject: string; text: string; idempotencyKey: string }) {
+    const response = await this.fetcher('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${this.apiKey}`,
+        'content-type': 'application/json',
+        'idempotency-key': input.idempotencyKey,
+      },
+      body: JSON.stringify({
+        from: this.from,
+        to: [input.to],
+        subject: input.subject,
+        text: input.text,
+      }),
+    });
+    if (!response.ok)
+      throw new Error(`Transactional email provider rejected delivery (${response.status})`);
+  }
+}
+
 export class InMemoryNotificationMetrics implements NotificationMetrics {
   readonly counters = new Map<string, number>();
   readonly gauges = new Map<string, number>();

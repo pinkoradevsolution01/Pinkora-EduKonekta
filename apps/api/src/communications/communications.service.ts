@@ -198,12 +198,13 @@ export class CommunicationsService {
         : AnnouncementState.PUBLISHED;
     const updated = await this.prisma.announcement.update({ where: { id }, data: { state } });
     await this.auditChange('ANNOUNCEMENT_PUBLISHED', actor, id);
-    await this.publisher.publish(
-      createEvent(NotificationEventType.ANNOUNCEMENT_PUBLISHED, id, item.schoolId, {
-        audienceCount: item.audiences.length,
-        state,
-      }),
-    );
+    if (state === AnnouncementState.PUBLISHED)
+      await this.publisher.publish(
+        createEvent(NotificationEventType.ANNOUNCEMENT_PUBLISHED, id, item.schoolId, {
+          audienceCount: item.audiences.length,
+          state,
+        }),
+      );
     return updated;
   }
   async listAnnouncements(actor: AuthContext) {

@@ -49,16 +49,19 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      # Browser requests stay same-origin and Next proxies them to the API.
+      # This removes CORS preflights from button clicks.
+      NEXT_PUBLIC_API_URL: /api/v1
+      API_INTERNAL_URL: http://api:4000/api/v1
+      NODE_ENV: production
     depends_on:
       api:
         condition: service_healthy
     ports:
       - '3100:3000'
-    volumes:
-      - .:/workspace
-      - workspace_node_modules:/workspace/node_modules
-    command: sh -c "cd apps/web && npm run dev"
+    # A production Next server avoids development compilation and filesystem
+    # watch overhead during ordinary local use. Rebuild after source changes.
+    command: sh -c "cd apps/web && npm run build && npm run start"
     healthcheck:
       test: ['CMD', 'node', 'apps/web/healthcheck.mjs']
       interval: 10s

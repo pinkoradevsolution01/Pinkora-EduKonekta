@@ -1,9 +1,27 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AssignmentState, RoleCode } from '@prisma/client';
+import { Response } from 'express';
 import { AuthGuard, RolesGuard, TenantGuard } from '../auth/auth.guards';
 import { Roles } from '../auth/decorators';
 import { AuthenticatedRequest } from '../auth/auth.types';
-import { assignmentSchema, feedbackSchema, submissionSchema } from './assignments.schemas';
+import {
+  assignmentSchema,
+  attachmentUploadSchema,
+  feedbackSchema,
+  submissionSchema,
+} from './assignments.schemas';
 import { AssignmentsService } from './assignments.service';
 
 @Controller({ path: 'assignments', version: '1' })
@@ -34,6 +52,26 @@ export class AssignmentsController {
   archive(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.assignments.changeState(req.auth!, id, AssignmentState.ARCHIVED);
   }
+  @Post(':id/attachment')
+  @Roles(RoleCode.TEACHER, RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
+  @UseGuards(RolesGuard)
+  uploadAssignmentAttachment(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.assignments.uploadAssignmentAttachment(
+      req.auth!,
+      id,
+      attachmentUploadSchema.parse(body),
+    );
+  }
+  @Delete(':id/attachment')
+  @Roles(RoleCode.TEACHER, RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
+  @UseGuards(RolesGuard)
+  removeAssignmentAttachment(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.assignments.removeAssignmentAttachment(req.auth!, id);
+  }
   @Get() list(@Req() req: AuthenticatedRequest) {
     return this.assignments.list(req.auth!);
   }
@@ -42,6 +80,26 @@ export class AssignmentsController {
   @UseGuards(RolesGuard)
   submit(@Req() req: AuthenticatedRequest, @Param('id') id: string, @Body() body: unknown) {
     return this.assignments.submit(req.auth!, id, submissionSchema.parse(body));
+  }
+  @Post('submissions/:submissionId/attachment')
+  @Roles(RoleCode.STUDENT)
+  @UseGuards(RolesGuard)
+  uploadSubmissionAttachment(
+    @Req() req: AuthenticatedRequest,
+    @Param('submissionId') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.assignments.uploadSubmissionAttachment(
+      req.auth!,
+      id,
+      attachmentUploadSchema.parse(body),
+    );
+  }
+  @Delete('submissions/:submissionId/attachment')
+  @Roles(RoleCode.STUDENT)
+  @UseGuards(RolesGuard)
+  removeSubmissionAttachment(@Req() req: AuthenticatedRequest, @Param('submissionId') id: string) {
+    return this.assignments.removeSubmissionAttachment(req.auth!, id);
   }
   @Get(':id/submissions')
   @Roles(
@@ -74,13 +132,23 @@ export class AssignmentsController {
     RoleCode.PLATFORM_ADMIN,
   )
   @UseGuards(RolesGuard)
-  attachment(
+  async attachment(
     @Req() req: AuthenticatedRequest,
     @Param('kind') kind: 'assignment' | 'submission',
     @Param('id') id: string,
     @Query('token') token?: string,
+    @Res() response?: Response,
   ) {
-    return this.assignments.attachment(req.auth!, kind, id, token);
+    const file = await this.assignments.attachment(req.auth!, kind, id, token);
+    const name = (file.name ?? 'attachment').replace(/[\\"\r\n]/g, '_');
+    return response!
+      .set({
+        'content-type': file.mime ?? 'application/octet-stream',
+        'content-length': String(file.data.length),
+        'content-disposition': `attachment; filename="${name}"`,
+        'cache-control': 'private, no-store',
+      })
+      .send(file.data);
   }
   @Post('attachments/:kind/:id/sign')
   @Roles(

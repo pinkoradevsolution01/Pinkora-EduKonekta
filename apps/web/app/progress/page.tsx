@@ -34,8 +34,8 @@ export default function ProgressPage() {
     ['TEACHER', 'SCHOOL_ADMIN', 'PLATFORM_ADMIN'].includes(role),
   );
   const isParent = auth.roles.includes('PARENT');
-  async function load() {
-    setLoading(true);
+  async function load(showInitialLoader = false) {
+    if (showInitialLoader) setLoading(true);
     try {
       const [me, data] = await Promise.all([
         fetch(`${api}/auth/me`, { credentials: 'include' }).then((response) => response.json()),
@@ -61,11 +61,11 @@ export default function ProgressPage() {
     } catch {
       setError('Unable to load progress notes.');
     } finally {
-      setLoading(false);
+      if (showInitialLoader) setLoading(false);
     }
   }
   useEffect(() => {
-    void load();
+    void load(true);
   }, []);
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { RoleCode } from '@prisma/client';
+import { Response } from 'express';
 import { AuthGuard, RolesGuard, TenantGuard } from '../auth/auth.guards';
 import { Roles } from '../auth/decorators';
 import { AuthenticatedRequest } from '../auth/auth.types';
@@ -13,6 +14,11 @@ export class MessagingController {
     @Req() r: AuthenticatedRequest,
   ) {
     return this.service.list(r.auth!);
+  }
+  @Get('contacts') @Roles(RoleCode.PARENT) @UseGuards(RolesGuard) contacts(
+    @Req() r: AuthenticatedRequest,
+  ) {
+    return this.service.contacts(r.auth!);
   }
   @Post('conversations') @Roles(RoleCode.PARENT) @UseGuards(RolesGuard) create(
     @Req() r: AuthenticatedRequest,
@@ -57,8 +63,19 @@ export class MessagingController {
     @Req() r: AuthenticatedRequest,
     @Param('id') id: string,
     @Query('token') token?: string,
+    @Res() response?: Response,
   ) {
-    return this.service.attachment(r.auth!, id, token);
+    return this.service.attachment(r.auth!, id, token).then((file) => {
+      const name = (file.name ?? 'attachment').replace(/[\\"\r\n]/g, '_');
+      return response!
+        .set({
+          'content-type': file.mime ?? 'application/octet-stream',
+          'content-length': String(file.data.length),
+          'content-disposition': `attachment; filename="${name}"`,
+          'cache-control': 'private, no-store',
+        })
+        .send(file.data);
+    });
   }
   @Post('conversations/:id/archive')
   @Roles(RoleCode.PARENT, RoleCode.TEACHER)

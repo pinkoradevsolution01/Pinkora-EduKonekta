@@ -42,7 +42,7 @@ The project is in the **MVP completion and pre-production phase**. It is suitabl
 - Assignments, submissions, due dates, late status, feedback, attachment protection foundations, and parent read-only access.
 - Attendance recording, correction history, parent/student views, and summaries.
 - Respectful progress notes, visibility controls, acknowledgement, and audit history.
-- Parent-teacher messaging with tenant and relationship authorization.
+- Parent-teacher messaging with tenant and relationship authorization, relationship-safe contact discovery, and private signed attachment downloads.
 
 ### Safeguarding and guidance
 
@@ -64,7 +64,7 @@ The project is in the **MVP completion and pre-production phase**. It is suitabl
 
 ### Completed notification, reporting, and hardening work
 
-- Queue-backed in-app and email-notification adapter foundation, user preferences, idempotency, retries, privacy-safe templates, monitoring, and validation tests.
+- Queue-backed in-app notifications and a Resend-ready email adapter, user preferences, idempotency, retries, privacy-safe templates, monitoring, and validation tests.
 - Responsive administrator dashboard, de-identified analytics, date-filtered reports, capped queries, and administrator-only exports.
 - Security headers, CSP, CSRF origin validation, request identifiers, safe error logging, authorization-matrix tests, restore-test documentation, and a clean production dependency audit.
 
@@ -79,8 +79,6 @@ See [design-validation.md](design-validation.md) and [hardening-findings.md](har
 
 ## Recommended next order
 
-1. Finish notifications and connect Resend after the sending domain is verified.
-2. Finish the admin dashboard/report exports.
-3. Complete security and quality hardening.
-4. Deploy a demo environment with fictional data.
-5. Run a controlled private-school pilot before any wider rollout.
+1. Configure the Resend sending domain and production email credentials.
+2. Deploy a demo environment with fictional data.
+3. Complete the controlled private-school pilot and its external approval gates before any wider rollout.

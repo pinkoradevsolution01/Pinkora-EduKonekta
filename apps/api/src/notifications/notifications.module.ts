@@ -10,6 +10,7 @@ import {
   InMemoryNotificationMetrics,
   NoopEmailAdapter,
   NOTIFICATION_METRICS,
+  ResendEmailAdapter,
 } from './notification.types';
 @Global()
 @Module({
@@ -20,7 +21,14 @@ import {
     NotificationWorkerService,
     QueueNotificationPublisher,
     { provide: EVENT_PUBLISHER, useExisting: QueueNotificationPublisher },
-    { provide: EMAIL_ADAPTER, useClass: NoopEmailAdapter },
+    {
+      provide: EMAIL_ADAPTER,
+      useFactory: () => {
+        const apiKey = process.env.RESEND_API_KEY;
+        const from = process.env.RESEND_FROM_EMAIL;
+        return apiKey && from ? new ResendEmailAdapter(apiKey, from) : new NoopEmailAdapter();
+      },
+    },
     { provide: NOTIFICATION_METRICS, useClass: InMemoryNotificationMetrics },
   ],
   exports: [NotificationsService, NotificationWorkerService, EVENT_PUBLISHER],

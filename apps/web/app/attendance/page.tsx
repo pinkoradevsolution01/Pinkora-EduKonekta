@@ -12,6 +12,14 @@ type Row = {
   notes: string;
 };
 type Summary = { present: number; absent: number; late: number; excused: number };
+type ClassOption = { id: string; name: string };
+type Recorded = {
+  id: string;
+  attendanceDate: string;
+  state: Row['state'];
+  notes: string | null;
+  student: { user: { displayName: string } };
+};
 
 async function request(path: string, options: RequestInit = {}) {
   const response = await fetch(`${api}${path}`, {
@@ -30,6 +38,8 @@ export default function AttendancePage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [classId, setClassId] = useState('');
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [recorded, setRecorded] = useState<Recorded[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const isTeacher = roles.includes('TEACHER');
@@ -41,21 +51,9 @@ export default function AttendancePage() {
         setRoles(me.roles ?? []);
         if (me.roles?.includes('TEACHER')) {
           const classes = await request('/structure/classes');
+          setClasses(classes);
           const first = classes[0];
-          if (first) {
-            setClassId(first.id);
-            const detail = await request(`/structure/classes/${first.id}`);
-            setRows(
-              detail.enrollments.map(
-                (item: { student: { id: string; user: { displayName: string } } }) => ({
-                  studentId: item.student.id,
-                  name: item.student.user.displayName,
-                  state: 'PRESENT',
-                  notes: '',
-                }),
-              ),
-            );
-          }
+          if (first) await selectClass(first.id);
         } else if (me.roles?.includes('PARENT')) {
           const children = await request('/attendance/children');
           setSummary(
@@ -79,6 +77,47 @@ export default function AttendancePage() {
     })();
   }, []);
 
+  async function selectClass(nextClassId: string, attendanceDate = date) {
+    setClassId(nextClassId);
+    try {
+      const [detail, entries] = await Promise.all([
+        request(`/structure/classes/${nextClassId}`),
+        request(
+          `/attendance?classId=${encodeURIComponent(nextClassId)}&attendanceDate=${attendanceDate}`,
+        ),
+      ]);
+      setRows(
+        detail.enrollments.map(
+          (item: { student: { id: string; user: { displayName: string } } }) => ({
+            studentId: item.student.id,
+            name: item.student.user.displayName,
+            state: 'PRESENT',
+            notes: '',
+          }),
+        ),
+      );
+      setRecorded(entries);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load this class.');
+    }
+  }
+  async function correct(record: Recorded) {
+    const state = window.prompt('Correct state: PRESENT, ABSENT, LATE, or EXCUSED', record.state);
+    if (!state || !['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'].includes(state)) return;
+    const reason = window.prompt('Reason for this correction');
+    if (!reason) return;
+    try {
+      await request(`/attendance/${record.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ state, notes: record.notes ?? undefined, reason }),
+      });
+      await selectClass(classId);
+      setMessage('Attendance correction saved with its audit history.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Attendance could not be corrected.');
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
@@ -97,6 +136,7 @@ export default function AttendancePage() {
         }),
       });
       setMessage('Attendance recorded.');
+      await selectClass(classId);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Attendance could not be recorded.');
     }
@@ -121,13 +161,27 @@ export default function AttendancePage() {
                 <input
                   type="date"
                   value={date}
-                  onChange={(event) => setDate(event.target.value)}
+                  onChange={(event) => {
+                    const nextDate = event.target.value;
+                    setDate(nextDate);
+                    if (classId) void selectClass(classId, nextDate);
+                  }}
                   className="brand-focus mt-1 block rounded-xl border border-[#dce5f7] bg-white p-3"
                 />
               </label>
-              <p className="text-sm text-slate-500">
-                Assigned class: {classId ? 'Ready to record' : 'Loading...'}
-              </p>
+              <p className="text-sm text-slate-500">Assigned class:</p>
+              <select
+                value={classId}
+                onChange={(event) => void selectClass(event.target.value)}
+                className="brand-focus rounded-xl border border-[#dce5f7] bg-white p-3"
+              >
+                <option value="">Select a class</option>
+                {classes.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="mt-6 space-y-3">
               {rows.map((row, index) => (
@@ -170,11 +224,35 @@ export default function AttendancePage() {
               ))}
             </div>
             <button
-              disabled={!rows.length}
+              disabled={!rows.length || recorded.length > 0}
               className="brand-button brand-focus mt-6 rounded-xl px-5 py-3 font-semibold text-white disabled:opacity-50"
             >
-              Save daily attendance
+              {recorded.length ? 'Use correction for recorded attendance' : 'Save daily attendance'}
             </button>
+            {recorded.length > 0 && (
+              <section className="mt-8 border-t border-[#e6edf8] pt-5">
+                <h2 className="font-bold text-[#092d83]">Recorded entries for this date</h2>
+                <div className="mt-3 space-y-2">
+                  {recorded.map((record) => (
+                    <div
+                      key={record.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f8faff] p-3 text-sm"
+                    >
+                      <span>
+                        {record.student.user.displayName} — {record.state}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void correct(record)}
+                        className="rounded-lg border border-[#dce5f7] px-3 py-1.5 font-semibold text-[#092d83]"
+                      >
+                        Correct
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </form>
         )}
         {summary && (

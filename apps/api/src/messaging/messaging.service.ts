@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConversationState, RoleCode } from '@prisma/client';
 import { AuthContext } from '../auth/auth.types';
+import { BadRequestException } from '@nestjs/common';
 import { sanitizeRichText, validateAttachment } from '../communications/content-security';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConversationInput, SendMessageInput } from './messaging.schemas';
@@ -17,12 +18,14 @@ import {
   EventPublisher,
 } from '../communications/notification-events';
 import { signAttachment, verifyAttachment } from '../assignments/assignments.events';
+import { ASSIGNMENT_FILE_STORE, AssignmentFileStore } from '../assignments/assignment-file-store';
 @Injectable()
 export class MessagingService {
   private attempts = new Map<string, number[]>();
   constructor(
     private readonly prisma: PrismaService,
     @Inject(EVENT_PUBLISHER) private readonly publisher: EventPublisher,
+    @Inject(ASSIGNMENT_FILE_STORE) private readonly files: AssignmentFileStore,
   ) {}
   private school(a: AuthContext) {
     if (!a.schoolId) throw new ForbiddenException('A school tenant is required');
@@ -88,6 +91,21 @@ export class MessagingService {
       },
     });
   }
+  private decodeAttachment(attachment?: {
+    name: string;
+    mime: string;
+    size: number;
+    data: string;
+  }) {
+    if (!attachment) return undefined;
+    if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(attachment.data))
+      throw new BadRequestException('Attachment data must be valid base64');
+    const data = Buffer.from(attachment.data, 'base64');
+    if (!data.length || data.length !== attachment.size)
+      throw new BadRequestException('Attachment size does not match uploaded data');
+    validateAttachment(attachment);
+    return data;
+  }
   async list(a: AuthContext) {
     const schoolId = this.school(a);
     return this.prisma.conversation.findMany({
@@ -103,6 +121,64 @@ export class MessagingService {
         },
       },
       orderBy: { updatedAt: 'desc' },
+    });
+  }
+  /**
+   * Returns only teachers connected to a parent's approved child links.  The
+   * client must choose from this list; it must never be able to discover or
+   * start a conversation with an arbitrary school user.
+   */
+  async contacts(a: AuthContext) {
+    const schoolId = this.school(a);
+    const links = await this.prisma.parentStudentLink.findMany({
+      where: { schoolId, status: 'APPROVED', parent: { userId: a.userId } },
+      include: {
+        student: {
+          include: {
+            user: { select: { displayName: true } },
+            enrollments: {
+              where: { schoolId, status: 'ACTIVE' },
+              include: {
+                class: {
+                  include: {
+                    assignments: {
+                      where: { schoolId },
+                      include: {
+                        teacher: { include: { user: { select: { id: true, displayName: true } } } },
+                        subject: { select: { name: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    return links.map((link) => {
+      const teachers = new Map<
+        string,
+        { userId: string; displayName: string; subjects: string[] }
+      >();
+      for (const enrollment of link.student.enrollments) {
+        for (const assignment of enrollment.class.assignments) {
+          const current = teachers.get(assignment.teacher.user.id) ?? {
+            userId: assignment.teacher.user.id,
+            displayName: assignment.teacher.user.displayName,
+            subjects: [],
+          };
+          if (!current.subjects.includes(assignment.subject.name))
+            current.subjects.push(assignment.subject.name);
+          teachers.set(current.userId, current);
+        }
+      }
+      return {
+        studentId: link.studentId,
+        studentName: link.student.user.displayName,
+        classes: link.student.enrollments.map((enrollment) => enrollment.class.name),
+        teachers: [...teachers.values()],
+      };
     });
   }
   async create(a: AuthContext, i: CreateConversationInput) {
@@ -122,26 +198,35 @@ export class MessagingService {
       throw new ForbiddenException(
         'Parent and teacher are not connected through an authorized student context',
       );
-    const attachment = i.attachment && validateAttachment(i.attachment);
-    const c = await this.prisma.conversation.create({
-      data: {
-        schoolId,
-        studentId: i.studentId,
-        parentUserId: a.userId,
-        teacherUserId: i.teacherUserId,
-        messages: {
-          create: {
-            schoolId,
-            authorUserId: a.userId,
-            content: sanitizeRichText(i.initialMessage),
-            attachmentName: attachment?.name,
-            attachmentMime: attachment?.mime,
-            attachmentSize: attachment?.size,
-            attachmentStorageKey: attachment?.storageKey,
+    const attachmentData = this.decodeAttachment(i.attachment);
+    const storageKey = attachmentData
+      ? await this.files.save(schoolId, attachmentData, 'messages')
+      : undefined;
+    let c;
+    try {
+      c = await this.prisma.conversation.create({
+        data: {
+          schoolId,
+          studentId: i.studentId,
+          parentUserId: a.userId,
+          teacherUserId: i.teacherUserId,
+          messages: {
+            create: {
+              schoolId,
+              authorUserId: a.userId,
+              content: sanitizeRichText(i.initialMessage),
+              attachmentName: i.attachment?.name,
+              attachmentMime: i.attachment?.mime,
+              attachmentSize: i.attachment?.size,
+              attachmentStorageKey: storageKey,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (storageKey) await this.files.remove(storageKey);
+      throw error;
+    }
     await this.audit('CONVERSATION_CREATED', a, c.id);
     return c;
   }
@@ -153,19 +238,28 @@ export class MessagingService {
     const c = await this.access(a, id);
     if (c.state === ConversationState.ARCHIVED)
       throw new ForbiddenException('Conversation is archived');
-    const attachment = i.attachment && validateAttachment(i.attachment);
-    const m = await this.prisma.message.create({
-      data: {
-        schoolId: this.school(a),
-        conversationId: id,
-        authorUserId: a.userId,
-        content: sanitizeRichText(i.content),
-        attachmentName: attachment?.name,
-        attachmentMime: attachment?.mime,
-        attachmentSize: attachment?.size,
-        attachmentStorageKey: attachment?.storageKey,
-      },
-    });
+    const attachmentData = this.decodeAttachment(i.attachment);
+    const storageKey = attachmentData
+      ? await this.files.save(this.school(a), attachmentData, 'messages')
+      : undefined;
+    let m;
+    try {
+      m = await this.prisma.message.create({
+        data: {
+          schoolId: this.school(a),
+          conversationId: id,
+          authorUserId: a.userId,
+          content: sanitizeRichText(i.content),
+          attachmentName: i.attachment?.name,
+          attachmentMime: i.attachment?.mime,
+          attachmentSize: i.attachment?.size,
+          attachmentStorageKey: storageKey,
+        },
+      });
+    } catch (error) {
+      if (storageKey) await this.files.remove(storageKey);
+      throw error;
+    }
     await this.audit('MESSAGE_SENT', a, m.id);
     await this.publisher.publish(
       createEvent('messaging.message.sent', m.id, this.school(a), {
@@ -249,7 +343,7 @@ export class MessagingService {
       name: message.attachmentName,
       mime: message.attachmentMime,
       size: message.attachmentSize,
-      storageKey: message.attachmentStorageKey,
+      data: await this.files.read(message.attachmentStorageKey),
     };
   }
 }

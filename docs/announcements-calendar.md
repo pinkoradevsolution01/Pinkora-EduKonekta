@@ -6,4 +6,4 @@ Drafts and future scheduled announcements are excluded from recipient queries. P
 
 Rich text is limited to a small safe tag set and rejects scripts, event attributes, dangerous schemes, embeds, and data URLs. Attachments are metadata-only in this module; allowed types are PDF, JPEG, PNG, plain text, and DOCX, limited to 10 MB and HTTPS URLs. Upload storage and malware scanning should be connected before accepting files in production.
 
-Calendar events may be school-wide or class-specific. Teachers can create events only for assigned classes. Both published announcements and calendar creation emit typed notification events (`announcement.published` and `calendar.event.created`) through the event publisher boundary for a future outbox/worker implementation.
+Calendar events may be school-wide or class-specific. Teachers can create events only for assigned classes. Both published announcements and calendar creation emit typed notification events (`announcement.published` and `calendar.event.created`). The queue worker also publishes due scheduled announcements atomically, using a stable event key so a retry cannot notify recipients twice.

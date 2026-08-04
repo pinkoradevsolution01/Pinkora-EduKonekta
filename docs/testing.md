@@ -2,6 +2,8 @@
 
 This guide explains how to run the complete local system, sign in with demonstration accounts, and validate it before a pilot. It is for local development only; never use the demonstration credentials or database in staging or production.
 
+See [system-validation-matrix.md](system-validation-matrix.md) for the required evidence and current status of each system area.
+
 ## Prerequisites
 
 1. Install and start Docker Desktop.
@@ -15,7 +17,7 @@ docker compose version
 
 ## Start the complete system
 
-Run this for the normal first start and whenever dependencies, Dockerfiles, or database migrations have changed:
+Run this for the normal first start and whenever source code, dependencies, Dockerfiles, or database migrations have changed. The web container intentionally uses the production Next.js server so interaction testing is responsive rather than slowed by development compilation:
 
 ```powershell
 docker compose up -d --build

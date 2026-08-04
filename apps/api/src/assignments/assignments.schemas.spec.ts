@@ -1,9 +1,9 @@
-import { assignmentSchema, submissionSchema } from './assignments.schemas';
+import { assignmentSchema, attachmentUploadSchema, submissionSchema } from './assignments.schemas';
 
 const id = '00000000-0000-0000-0000-000000000001';
 
 describe('assignment validation schemas', () => {
-  it('requires bounded assignment and attachment metadata', () => {
+  it('requires bounded assignment fields and upload bytes', () => {
     expect(() =>
       assignmentSchema.parse({
         classId: id,
@@ -11,12 +11,14 @@ describe('assignment validation schemas', () => {
         title: 'Task',
         instructions: 'Do it',
         dueAt: new Date(),
-        attachment: {
-          name: 'bad.exe',
-          mime: 'application/x-msdownload',
-          size: 1,
-          storageKey: 'private/task',
-        },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      attachmentUploadSchema.parse({
+        name: 'work.pdf',
+        mime: 'application/pdf',
+        size: 4,
+        data: 'dGVzdA==',
       }),
     ).not.toThrow();
     expect(() =>

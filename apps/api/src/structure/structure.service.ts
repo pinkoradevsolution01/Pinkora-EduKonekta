@@ -266,6 +266,85 @@ export class StructureService {
     });
   }
 
+  /** Bounded tenant-scoped data for the school-administration workspace. */
+  async administrationOverview(actor: AuthContext) {
+    const schoolId = this.school(actor.schoolId);
+    const [
+      schoolYears,
+      subjects,
+      classes,
+      students,
+      teachers,
+      parents,
+      enrollments,
+      assignments,
+      links,
+    ] = await Promise.all([
+      this.prisma.schoolYear.findMany({
+        where: { schoolId },
+        orderBy: { startsOn: 'desc' },
+        take: 100,
+      }),
+      this.prisma.subject.findMany({ where: { schoolId }, orderBy: { name: 'asc' }, take: 300 }),
+      this.prisma.class.findMany({
+        where: { schoolId },
+        include: { schoolYear: true },
+        orderBy: { name: 'asc' },
+        take: 300,
+      }),
+      this.prisma.studentProfile.findMany({
+        where: { schoolId },
+        include: { user: { select: { displayName: true, email: true } } },
+        orderBy: { user: { displayName: 'asc' } },
+        take: 500,
+      }),
+      this.prisma.teacherProfile.findMany({
+        where: { schoolId },
+        include: { user: { select: { displayName: true, email: true } } },
+        orderBy: { user: { displayName: 'asc' } },
+        take: 500,
+      }),
+      this.prisma.parentProfile.findMany({
+        where: { schoolId },
+        include: { user: { select: { displayName: true, email: true } } },
+        orderBy: { user: { displayName: 'asc' } },
+        take: 500,
+      }),
+      this.prisma.enrollment.findMany({
+        where: { schoolId },
+        include: { class: true, schoolYear: true, student: { include: { user: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      this.prisma.teacherAssignment.findMany({
+        where: { schoolId },
+        include: { class: true, subject: true, teacher: { include: { user: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      this.prisma.parentStudentLink.findMany({
+        where: { schoolId },
+        include: {
+          parent: { include: { user: true } },
+          student: { include: { user: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+    ]);
+    return {
+      schoolYears,
+      subjects,
+      classes,
+      students,
+      teachers,
+      parents,
+      enrollments,
+      teacherAssignments: assignments,
+      parentLinks: links,
+    };
+  }
+
   async validateBulkEnrollments(actor: AuthContext, rows: EnrollmentInput[]) {
     const schoolId = this.school(actor.schoolId);
     const errors: Array<{ index: number; message: string }> = [];

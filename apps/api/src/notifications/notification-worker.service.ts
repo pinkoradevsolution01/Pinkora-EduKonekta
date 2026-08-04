@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { NotificationStatus } from '@prisma/client';
 import { DomainEvent } from '../communications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,12 +14,37 @@ const MAX_ATTEMPTS = 3;
 
 /** Queue worker. It resolves recipients from current authorizations, never event text. */
 @Injectable()
-export class NotificationWorkerService {
+export class NotificationWorkerService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(NotificationWorkerService.name);
+  private timer?: NodeJS.Timeout;
   constructor(
     private readonly prisma: PrismaService,
     @Inject(EMAIL_ADAPTER) private readonly email: EmailAdapter,
     @Inject(NOTIFICATION_METRICS) private readonly metrics: NotificationMetrics,
   ) {}
+  onModuleInit() {
+    if (process.env.NOTIFICATION_QUEUE_ENABLED === 'false') return;
+    void this.runScheduled();
+    this.timer = setInterval(() => void this.runScheduled(), 60_000);
+    this.timer.unref();
+  }
+  onModuleDestroy() {
+    if (this.timer) clearInterval(this.timer);
+  }
+  private async runScheduled() {
+    try {
+      const now = new Date();
+      await this.publishScheduledAnnouncements(now);
+      await this.enqueueAssignmentDueReminders(now);
+      await this.enqueueDueGuidanceFollowUps(now);
+      await this.enqueueCalendarReminders(now);
+      await this.process();
+    } catch (error) {
+      this.logger.error(
+        `Notification queue cycle failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
+      );
+    }
+  }
   async enqueueEvent(event: DomainEvent) {
     const recipients = await this.recipients(event);
     await Promise.all(
@@ -327,6 +352,81 @@ export class NotificationWorkerService {
         });
         queued++;
       }
+    return { queued };
+  }
+  /** Publishes due scheduled announcements once, then uses the ordinary recipient resolver. */
+  async publishScheduledAnnouncements(now = new Date()) {
+    const scheduled = await this.prisma.announcement.findMany({
+      where: { state: 'SCHEDULED', publishAt: { lte: now } },
+      select: { id: true, schoolId: true },
+      take: 100,
+    });
+    let published = 0;
+    for (const item of scheduled) {
+      const result = await this.prisma.announcement.updateMany({
+        where: { id: item.id, schoolId: item.schoolId, state: 'SCHEDULED' },
+        data: { state: 'PUBLISHED' },
+      });
+      if (!result.count) continue;
+      await this.prisma.auditLog.create({
+        data: {
+          schoolId: item.schoolId,
+          action: 'ANNOUNCEMENT_SCHEDULED_PUBLISHED',
+          entityType: 'communications',
+          entityId: item.id,
+        },
+      });
+      await this.enqueueEvent({
+        id: `scheduled-announcement:${item.id}`,
+        type: 'announcement.published',
+        version: 1,
+        occurredAt: now.toISOString(),
+        aggregateId: item.id,
+        schoolId: item.schoolId,
+        payload: {},
+      });
+      published++;
+    }
+    return { published };
+  }
+  /** Queue-runner entrypoint for the 24-hour assignment reminder window. */
+  async enqueueAssignmentDueReminders(now = new Date(), leadHours = 24) {
+    const assignments = await this.prisma.assignment.findMany({
+      where: {
+        state: 'PUBLISHED',
+        dueAt: { gt: now, lte: new Date(now.getTime() + leadHours * 3600_000) },
+      },
+      select: { id: true, schoolId: true },
+    });
+    const day = now.toISOString().slice(0, 10);
+    let queued = 0;
+    for (const assignment of assignments) {
+      const recipients = await this.recipients({
+        id: `assignment-due:${assignment.id}:${day}`,
+        type: 'assignment.due_soon',
+        version: 1,
+        occurredAt: now.toISOString(),
+        aggregateId: assignment.id,
+        schoolId: assignment.schoolId,
+        payload: {},
+      });
+      for (const recipientUserId of new Set(recipients)) {
+        await this.prisma.notificationJob.upsert({
+          where: {
+            idempotencyKey: `assignment-due:${assignment.id}:${recipientUserId}:${day}`,
+          },
+          update: {},
+          create: {
+            schoolId: assignment.schoolId,
+            recipientUserId,
+            eventType: 'assignment.due_soon',
+            payload: { assignmentId: assignment.id },
+            idempotencyKey: `assignment-due:${assignment.id}:${recipientUserId}:${day}`,
+          },
+        });
+        queued++;
+      }
+    }
     return { queued };
   }
   private done(id: string, attempts: number) {

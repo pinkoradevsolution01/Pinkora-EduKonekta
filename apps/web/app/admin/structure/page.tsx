@@ -2,10 +2,32 @@
 
 import { FormEvent, ReactNode, useState } from 'react';
 import { WorkspaceNav } from '../../components/workspace-nav';
+import { StructureManager } from './structure-manager';
 
 const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
 export default function StructureAdminPage() {
+  return (
+    <main className="app-shell brand-gradient text-slate-900">
+      <div className="page-container">
+        <WorkspaceNav />
+        <header>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#e31b23]">
+            JVerse EduKonekta
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-[#092d83]">School structure</h1>
+          <p className="mt-2 max-w-2xl text-slate-600">
+            Create academic structures and verified relationships. All records stay within your
+            active school and every change is audited.
+          </p>
+        </header>
+        <StructureManager />
+      </div>
+    </main>
+  );
+}
+
+function LegacyStructureAdminPage() {
   const [schoolId, setSchoolId] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -28,8 +50,8 @@ export default function StructureAdminPage() {
     }
   }
   return (
-    <main className="brand-gradient min-h-screen px-5 py-10 text-slate-900 sm:px-8">
-      <div className="mx-auto max-w-6xl">
+    <main className="app-shell brand-gradient text-slate-900">
+      <div className="page-container">
         <WorkspaceNav />
         <header>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#e31b23]">
@@ -170,7 +192,10 @@ function Form({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-sm">
+    <form
+      onSubmit={onSubmit}
+      className="min-w-0 flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-sm"
+    >
       <h2 className="font-semibold">{title}</h2>
       {fields}
       <button className="brand-button brand-focus rounded-xl p-3 font-semibold text-white">
@@ -179,3 +204,6 @@ function Form({
     </form>
   );
 }
+
+// Retained only while the new manager is rolled out; it is not rendered.
+void LegacyStructureAdminPage;

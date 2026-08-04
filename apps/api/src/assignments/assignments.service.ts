@@ -19,7 +19,13 @@ import {
   signAttachment,
   verifyAttachment,
 } from './assignments.events';
-import { AssignmentInput, FeedbackInput, SubmissionInput } from './assignments.schemas';
+import {
+  AssignmentInput,
+  AttachmentUploadInput,
+  FeedbackInput,
+  SubmissionInput,
+} from './assignments.schemas';
+import { ASSIGNMENT_FILE_STORE, AssignmentFileStore } from './assignment-file-store';
 
 @Injectable()
 export class AssignmentsService {
@@ -27,6 +33,7 @@ export class AssignmentsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogRepository,
     @Inject(EVENT_PUBLISHER) private readonly publisher: EventPublisher,
+    @Inject(ASSIGNMENT_FILE_STORE) private readonly files: AssignmentFileStore,
   ) {}
 
   private school(actor: AuthContext) {
@@ -99,7 +106,6 @@ export class AssignmentsService {
 
   async create(actor: AuthContext, input: AssignmentInput) {
     const schoolId = await this.assertAssignmentReferences(actor, input);
-    const attachment = input.attachment && validateAttachment(input.attachment);
     const item = await this.prisma.assignment.create({
       data: {
         schoolId,
@@ -109,10 +115,6 @@ export class AssignmentsService {
         title: input.title,
         instructions: input.instructions,
         dueAt: input.dueAt,
-        attachmentName: attachment?.name,
-        attachmentMime: attachment?.mime,
-        attachmentSize: attachment?.size,
-        attachmentStorageKey: attachment?.storageKey,
       },
     });
     await this.auditChange('ASSIGNMENT_CREATED', actor, item.id);
@@ -129,8 +131,7 @@ export class AssignmentsService {
     if (!item) throw new NotFoundException('Assignment not found');
     await this.canManage(actor, item);
     const schoolId = await this.assertAssignmentReferences(actor, input);
-    const attachment = input.attachment && validateAttachment(input.attachment);
-    return this.prisma.assignment.update({
+    const updated = await this.prisma.assignment.update({
       where: { id },
       data: {
         schoolId,
@@ -139,12 +140,10 @@ export class AssignmentsService {
         title: input.title,
         instructions: input.instructions,
         dueAt: input.dueAt,
-        attachmentName: attachment?.name,
-        attachmentMime: attachment?.mime,
-        attachmentSize: attachment?.size,
-        attachmentStorageKey: attachment?.storageKey,
       },
     });
+    await this.auditChange('ASSIGNMENT_UPDATED', actor, id);
+    return updated;
   }
 
   async changeState(actor: AuthContext, id: string, state: AssignmentState) {
@@ -260,7 +259,6 @@ export class AssignmentsService {
     });
     if (!student || !assignment)
       throw new ForbiddenException('Assignment is not available to this student');
-    const attachment = input.attachment && validateAttachment(input.attachment);
     try {
       const item = await this.prisma.submission.upsert({
         where: {
@@ -270,10 +268,6 @@ export class AssignmentsService {
           content: input.content,
           completedAt: input.completed ? new Date() : null,
           submittedAt: new Date(),
-          attachmentName: attachment?.name,
-          attachmentMime: attachment?.mime,
-          attachmentSize: attachment?.size,
-          attachmentStorageKey: attachment?.storageKey,
         },
         create: {
           schoolId,
@@ -281,10 +275,6 @@ export class AssignmentsService {
           studentId: student.id,
           content: input.content,
           completedAt: input.completed ? new Date() : null,
-          attachmentName: attachment?.name,
-          attachmentMime: attachment?.mime,
-          attachmentSize: attachment?.size,
-          attachmentStorageKey: attachment?.storageKey,
         },
       });
       await this.auditChange('ASSIGNMENT_SUBMITTED', actor, item.id, { assignmentId });
@@ -366,6 +356,119 @@ export class AssignmentsService {
     return updated;
   }
 
+  private decodeAttachment(input: AttachmentUploadInput) {
+    if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.data))
+      throw new BadRequestException('Attachment data must be valid base64');
+    const data = Buffer.from(input.data, 'base64');
+    if (!data.length || data.length !== input.size)
+      throw new BadRequestException('Attachment size does not match uploaded data');
+    validateAttachment({ name: input.name, mime: input.mime, size: input.size });
+    return data;
+  }
+
+  private async replaceFile(
+    schoolId: string,
+    previousKey: string | null,
+    input: AttachmentUploadInput,
+    update: (storageKey: string) => Promise<void>,
+  ) {
+    const storageKey = await this.files.save(schoolId, this.decodeAttachment(input));
+    try {
+      await update(storageKey);
+    } catch (error) {
+      await this.files.remove(storageKey);
+      throw error;
+    }
+    if (previousKey) await this.files.remove(previousKey);
+    return storageKey;
+  }
+
+  async uploadAssignmentAttachment(actor: AuthContext, id: string, input: AttachmentUploadInput) {
+    const item = await this.prisma.assignment.findFirst({
+      where: { id, schoolId: this.school(actor) },
+    });
+    if (!item) throw new NotFoundException('Assignment not found');
+    await this.canManage(actor, item);
+    await this.replaceFile(item.schoolId, item.attachmentStorageKey, input, async (storageKey) => {
+      await this.prisma.assignment.update({
+        where: { id },
+        data: {
+          attachmentName: input.name,
+          attachmentMime: input.mime,
+          attachmentSize: input.size,
+          attachmentStorageKey: storageKey,
+        },
+      });
+    });
+    await this.auditChange('ASSIGNMENT_ATTACHMENT_UPLOADED', actor, id);
+    return { name: input.name, mime: input.mime, size: input.size };
+  }
+
+  async removeAssignmentAttachment(actor: AuthContext, id: string) {
+    const item = await this.prisma.assignment.findFirst({
+      where: { id, schoolId: this.school(actor) },
+    });
+    if (!item?.attachmentStorageKey) throw new NotFoundException('Attachment not found');
+    await this.canManage(actor, item);
+    await this.prisma.assignment.update({
+      where: { id },
+      data: {
+        attachmentName: null,
+        attachmentMime: null,
+        attachmentSize: null,
+        attachmentStorageKey: null,
+      },
+    });
+    await this.files.remove(item.attachmentStorageKey);
+    await this.auditChange('ASSIGNMENT_ATTACHMENT_DELETED', actor, id);
+  }
+
+  async uploadSubmissionAttachment(
+    actor: AuthContext,
+    submissionId: string,
+    input: AttachmentUploadInput,
+  ) {
+    if (!actor.roles.includes(RoleCode.STUDENT))
+      throw new ForbiddenException('Only students can upload submission files');
+    const item = await this.prisma.submission.findFirst({
+      where: { id: submissionId, schoolId: this.school(actor), student: { userId: actor.userId } },
+    });
+    if (!item) throw new ForbiddenException('Submission attachment access denied');
+    await this.replaceFile(item.schoolId, item.attachmentStorageKey, input, async (storageKey) => {
+      await this.prisma.submission.update({
+        where: { id: submissionId },
+        data: {
+          attachmentName: input.name,
+          attachmentMime: input.mime,
+          attachmentSize: input.size,
+          attachmentStorageKey: storageKey,
+        },
+      });
+    });
+    await this.auditChange('SUBMISSION_ATTACHMENT_UPLOADED', actor, submissionId);
+    return { name: input.name, mime: input.mime, size: input.size };
+  }
+
+  async removeSubmissionAttachment(actor: AuthContext, submissionId: string) {
+    if (!actor.roles.includes(RoleCode.STUDENT))
+      throw new ForbiddenException('Only students can delete submission files');
+    const item = await this.prisma.submission.findFirst({
+      where: { id: submissionId, schoolId: this.school(actor), student: { userId: actor.userId } },
+    });
+    if (!item?.attachmentStorageKey) throw new NotFoundException('Attachment not found');
+    await this.prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        attachmentName: null,
+        attachmentMime: null,
+        attachmentSize: null,
+        attachmentStorageKey: null,
+      },
+    });
+    await this.files.remove(item.attachmentStorageKey);
+    await this.auditChange('SUBMISSION_ATTACHMENT_DELETED', actor, submissionId);
+  }
+
   async attachment(
     actor: AuthContext,
     kind: 'assignment' | 'submission',
@@ -383,8 +486,7 @@ export class AssignmentsService {
         name: item.attachmentName,
         mime: item.attachmentMime,
         size: item.attachmentSize,
-        storageKey: item.attachmentStorageKey,
-        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        data: await this.files.read(item.attachmentStorageKey),
       };
     }
     const item = await this.prisma.submission.findFirst({
@@ -399,8 +501,7 @@ export class AssignmentsService {
       name: item.attachmentName,
       mime: item.attachmentMime,
       size: item.attachmentSize,
-      storageKey: item.attachmentStorageKey,
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      data: await this.files.read(item.attachmentStorageKey),
     };
   }
 

@@ -95,6 +95,12 @@ export class StructureController {
       ? this.structure.teacherClasses(req.auth!)
       : this.structure.teacherClasses(req.auth!);
   }
+  @Get('administration-overview')
+  @Roles(RoleCode.SCHOOL_ADMIN, RoleCode.PLATFORM_ADMIN)
+  @UseGuards(RolesGuard)
+  administrationOverview(@Req() req: AuthenticatedRequest) {
+    return this.structure.administrationOverview(req.auth!);
+  }
   @Get('classes/:classId') @Roles(RoleCode.TEACHER) @UseGuards(RolesGuard) assignedClass(
     @Req() req: AuthenticatedRequest,
     @Param('classId') classId: string,

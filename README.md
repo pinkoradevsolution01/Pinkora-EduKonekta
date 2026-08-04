@@ -1,6 +1,6 @@
 # Pinkora EduKonekta
 
-Pinkora EduKonekta is a Progressive Web Application foundation for multi-tenant school communication and student support. This repository is a modular monolith monorepo; business modules are intentionally not included yet.
+Pinkora EduKonekta is a multi-tenant school communication and student-support MVP. This modular-monolith repository includes the working school operations, safeguarding, notifications, reporting, and administration modules needed for local demonstration and controlled pilot preparation.
 
 ## Repository layout
 
@@ -23,7 +23,7 @@ Prerequisites: Node.js 22+, npm 10+, and Docker Desktop.
 1. Copy `.env.example` to `.env`.
 2. Install dependencies with `npm install`.
 3. Start PostgreSQL and the local services: `docker compose up --build`. The API container generates Prisma, applies migrations, and loads the demonstration seed before starting.
-4. Check the API at `http://localhost:4000/api/v1/health` and the web app at `http://localhost:3000`.
+4. Check the API at `http://localhost:4000/api/v1/health` and the web app at `http://localhost:3100`.
 5. Confirm all containers are healthy with `docker compose ps`; the API health response should contain `"status":"ok"` and `"database":"up"`.
 
 For a non-Docker API process, run `npm run prisma:generate --workspace=@pinkora/api`, `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma`, and `npm run prisma:seed --workspace=@pinkora/api` before starting the API.

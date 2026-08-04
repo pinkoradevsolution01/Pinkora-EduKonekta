@@ -9,4 +9,29 @@ describe('structure bulk import template', () => {
       }),
     );
   });
+
+  it('scopes every administration overview query to the active school', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      schoolYear: { findMany },
+      subject: { findMany },
+      class: { findMany },
+      studentProfile: { findMany },
+      teacherProfile: { findMany },
+      parentProfile: { findMany },
+      enrollment: { findMany },
+      teacherAssignment: { findMany },
+      parentStudentLink: { findMany },
+    };
+    const service = new StructureService(prisma as any, {} as any);
+    await service.administrationOverview({
+      sessionId: 'session',
+      userId: 'user',
+      email: 'admin@example.test',
+      schoolId: 'school-a',
+      roles: [],
+    });
+    expect(findMany).toHaveBeenCalledTimes(9);
+    for (const [input] of findMany.mock.calls) expect(input.where.schoolId).toBe('school-a');
+  });
 });
