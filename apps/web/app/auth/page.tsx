@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { BrandWordmark } from '../components/brand-wordmark';
 
 const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
@@ -19,6 +20,7 @@ async function post(path: string, body: unknown) {
 }
 
 export default function AuthPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'invite' | 'recovery'>('login');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +32,7 @@ export default function AuthPage() {
     try {
       if (mode === 'login') {
         await post('/auth/login', { email: form.get('email'), password: form.get('password') });
-        window.location.assign('/workspace');
+        router.replace('/workspace');
         return;
       }
       if (mode === 'invite')

@@ -46,5 +46,7 @@ No secrets belong in the repository. Use `.env` locally and configure CI/deploym
 
 See [docs/database.md](docs/database.md) for the ERD and tenant-isolation rules.
 See [docs/testing.md](docs/testing.md) for demo users, passwords, manual scenarios, and automated testing instructions.
+See [docs/deployment-runbook.md](docs/deployment-runbook.md) for the production release, migration, smoke-test, monitoring, backup, and approval gates.
+See [docs/release-readiness-report.md](docs/release-readiness-report.md) for the current pilot release decision and remaining external gates.
 See [docs/assignments-submissions.md](docs/assignments-submissions.md) for assignment access rules, signed attachments, events, and API routes.
 See [docs/attendance-parent-dashboard.md](docs/attendance-parent-dashboard.md) for attendance access rules, correction history, notification recipients, and dashboard routes.
