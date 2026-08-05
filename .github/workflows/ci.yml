@@ -33,6 +33,10 @@ jobs:
       API_VERSION: v1
       LOG_LEVEL: warn
       RUN_DB_TESTS: true
+      # Browser calls stay same-origin; Next rewrites this path to the locally
+      # started API during the Playwright job.
+      NEXT_PUBLIC_API_URL: /api/v1
+      API_INTERNAL_URL: http://127.0.0.1:4000/api/v1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,7 +54,7 @@ jobs:
       - run: npm test
       - run: npm run build:shared
       - run: npm run build:api
-      - run: npm run build:web
+      - run: NODE_ENV=production npm run build:web
       - name: Verify API health against PostgreSQL
         shell: bash
         run: |
@@ -71,14 +75,28 @@ jobs:
       - name: Run Playwright smoke test
         shell: bash
         run: |
-          npm run start --workspace=@pinkora/web > web.log 2>&1 &
+          npm run start --workspace=@pinkora/api > api-e2e.log 2>&1 &
+          api_pid=$!
+          NODE_ENV=production npm run start --workspace=@pinkora/web -- --hostname 127.0.0.1 > web.log 2>&1 &
           web_pid=$!
-          trap 'kill "$web_pid"' EXIT
+          cleanup() {
+            kill "$web_pid" "$api_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=false
           for attempt in {1..30}; do
-            if curl --silent --show-error --fail http://localhost:3000/api/health; then
+            if curl --silent --show-error --fail http://localhost:4000/api/v1/health >/dev/null && \
+              curl --silent --show-error --fail http://localhost:3000/api/health >/dev/null; then
+              ready=true
               break
             fi
             sleep 2
           done
+          if [ "$ready" != true ]; then
+            echo 'API or web server did not become ready.'
+            cat api-e2e.log || true
+            cat web.log || true
+            exit 1
+          fi
           npx playwright install --with-deps chromium
           npm run test:e2e
